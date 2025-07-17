@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,17 +40,10 @@ import {
   OCRProcessor,
   parseAdvancedPrizePickFromOCR,
 } from "@/lib/ocr-processor";
+import { betStorage, type StoredBet } from "@/lib/storage";
 
-interface Bet {
-  id: string;
-  sport: string;
-  team: string;
-  odds: string;
-  stake: number;
-  result: "win" | "loss" | "pending";
-  payout?: number;
-  date: string;
-}
+// Using StoredBet interface from storage.ts
+type Bet = StoredBet;
 
 interface BetHistoryCardProps {
   bet: Bet;
@@ -233,6 +226,12 @@ function BetHistoryCard({
 export default function Index() {
   const [bets, setBets] = useState<Bet[]>([]);
 
+  // Load bets from localStorage on component mount
+  useEffect(() => {
+    const storedBets = betStorage.loadBets();
+    setBets(storedBets);
+  }, []);
+
   const [newBet, setNewBet] = useState({
     sport: "",
     team: "",
@@ -264,16 +263,17 @@ export default function Index() {
 
   const addBet = () => {
     if (newBet.sport && newBet.team && newBet.odds && newBet.stake) {
-      const bet: Bet = {
+      const bet = {
         id: Date.now().toString(),
         sport: newBet.sport,
         team: newBet.team,
         odds: newBet.odds,
         stake: parseFloat(newBet.stake),
-        result: "pending",
+        result: "pending" as const,
         date: new Date().toISOString().split("T")[0],
       };
-      setBets([...bets, bet]);
+      const updatedBets = betStorage.addBet(bet);
+      setBets(updatedBets);
       setNewBet({ sport: "", team: "", odds: "", stake: "" });
     }
   };
@@ -281,7 +281,8 @@ export default function Index() {
   const importPrizePickData = (data: PrizePickData) => {
     if (validatePrizePickData(data)) {
       const newBets = parsePrizePickLineupsToBets(data);
-      setBets([...bets, ...newBets]);
+      const updatedBets = betStorage.addBets(newBets);
+      setBets(updatedBets);
     }
   };
 
@@ -356,17 +357,17 @@ export default function Index() {
     result: "win" | "loss",
     payout?: number,
   ) => {
-    setBets(
-      bets.map((bet) =>
-        bet.id === id
-          ? { ...bet, result, payout: result === "win" ? payout : undefined }
-          : bet,
-      ),
-    );
+    const updates = {
+      result,
+      payout: result === "win" ? payout : undefined,
+    };
+    const updatedBets = betStorage.updateBet(id, updates);
+    setBets(updatedBets);
   };
 
   const deleteBet = (id: string) => {
-    setBets(bets.filter((bet) => bet.id !== id));
+    const updatedBets = betStorage.deleteBet(id);
+    setBets(updatedBets);
   };
 
   const calculatePayout = (odds: string, stake: number) => {
