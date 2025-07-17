@@ -1054,6 +1054,64 @@ function determineBetDirection(
   return Math.random() > 0.5 ? "over" : "under";
 }
 
+// Enhanced name extraction using training data
+function extractPlayerNamesWithTraining(text: string): string[] {
+  const names: string[] = [];
+
+  // First try to match against known player names from training data
+  const allTrainingPlayers = [
+    ...PRIZEPICK_TRAINING_DATA.players.WNBA,
+    ...PRIZEPICK_TRAINING_DATA.players.Tennis,
+    ...PRIZEPICK_TRAINING_DATA.players.PGA,
+  ];
+
+  // Check for exact matches in the text (case insensitive)
+  allTrainingPlayers.forEach((playerName) => {
+    const regex = new RegExp(playerName.replace(/\s+/g, "\\s+"), "gi");
+    if (regex.test(text)) {
+      names.push(playerName);
+    }
+  });
+
+  // If no training matches, fall back to pattern matching
+  if (names.length === 0) {
+    const patterns = [
+      // Full names like "Doug Ghim", "Kurt Kitayama"
+      /\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b/g,
+      // Names with middle initial like "John F. Smith"
+      /\b([A-Z][a-z]{2,})\s+([A-Z]\.)\s+([A-Z][a-z]{2,})\b/g,
+      // Three part names like "Luis Garcia Santos"
+      /\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b/g,
+    ];
+
+    patterns.forEach((pattern) => {
+      const matches = text.matchAll(pattern);
+      for (const match of matches) {
+        if (match[3]) {
+          names.push(`${match[1]} ${match[2]} ${match[3]}`);
+        } else if (match[2]) {
+          names.push(`${match[1]} ${match[2]}`);
+        }
+      }
+    });
+  }
+
+  // Remove common false positives
+  const filtered = names.filter((name) => {
+    const lower = name.toLowerCase();
+    return (
+      !lower.includes("prizepick") &&
+      !lower.includes("lineup") &&
+      !lower.includes("flex play") &&
+      !lower.includes("power play") &&
+      name.length > 4
+    );
+  });
+
+  // Remove duplicates
+  return [...new Set(filtered)];
+}
+
 // Keep the old fallback for backwards compatibility
 function parseFallbackPrizePickFromOCR(ocrText: string): PrizePickLineup[] {
   return parseAggressivePrizePickFromOCR(ocrText);
