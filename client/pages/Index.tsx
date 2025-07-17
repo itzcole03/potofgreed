@@ -1282,7 +1282,7 @@ function CorrectionInterface({
                 }
               >
                 <SelectTrigger className="mt-1">
-                  <SelectValue />
+                  <SelectValue placeholder="Select stat type" />
                 </SelectTrigger>
                 <SelectContent>
                   {getStatTypesForSport(player.sport).map((statType) => (
