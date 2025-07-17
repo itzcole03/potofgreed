@@ -456,16 +456,19 @@ function tryDirectPatternMatching(ocrText: string): PrizePickLineup | null {
   else if (/win/i.test(ocrText)) status = "win";
   else if (/loss|lost/i.test(ocrText)) status = "loss";
 
-  // Create enhanced lineup based on training data patterns
+  // Parse actual player data from OCR text instead of using hardcoded data
+  const players = parseActualPlayersFromOCR(
+    ocrText,
+    detectedLineup.playerCount,
+  );
+
+  // Create lineup with actual parsed data
   const lineup = {
     type: `${detectedLineup.type} ${playType}`,
     entryAmount,
     potentialPayout,
     status,
-    players: generatePlayersFromTrainingData(
-      detectedLineup.playerCount,
-      ocrText,
-    ),
+    players,
   };
 
   console.log("Created enhanced lineup:", lineup);
