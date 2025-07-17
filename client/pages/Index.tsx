@@ -70,6 +70,7 @@ function BetHistoryCard({
   onUpdateResult,
   onDelete,
   calculatePayout,
+  onUpdatePick,
 }: BetHistoryCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
