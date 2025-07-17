@@ -114,12 +114,54 @@ export class OCRProcessor {
   ): Promise<any[]> {
     const results = [];
 
-    // Pass 1: Standard mobile UI optimized configuration
+    // Region-based OCR processing
+    const regions = this.detectUIRegions(image);
+
+    // Process header region (lineup info and money amounts)
     if (onProgress) {
       onProgress({
-        status: "OCR Pass 1: Mobile UI optimization...",
-        progress: 35,
+        status: "OCR Pass 1: Processing header region...",
+        progress: 30,
       });
+    }
+
+    const headerResult = await this.processRegion(
+      worker,
+      image,
+      regions.header,
+      {
+        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
+        tessedit_char_whitelist:
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .$-",
+      },
+    );
+    results.push({ ...headerResult, region: "header" });
+
+    // Process player card regions separately
+    for (let i = 0; i < regions.playerCards.length; i++) {
+      if (onProgress) {
+        onProgress({
+          status: `OCR Pass ${i + 2}: Processing player card ${i + 1}...`,
+          progress: 40 + i * 8,
+        });
+      }
+
+      const playerResult = await this.processRegion(
+        worker,
+        image,
+        regions.playerCards[i],
+        {
+          tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+          tessedit_char_whitelist:
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .$-+@():",
+        },
+      );
+      results.push({ ...playerResult, region: `player${i + 1}` });
+    }
+
+    // Full image backup pass
+    if (onProgress) {
+      onProgress({ status: "OCR Pass: Full image backup...", progress: 75 });
     }
 
     await worker.setParameters({
@@ -127,74 +169,102 @@ export class OCRProcessor {
       tessedit_char_whitelist:
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .$-+@():",
     });
-    results.push(await worker.recognize(image));
-
-    // Pass 2: Player names optimization (more lenient for names)
-    if (onProgress) {
-      onProgress({
-        status: "OCR Pass 2: Player name extraction...",
-        progress: 45,
-      });
-    }
-
-    await worker.setParameters({
-      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_COLUMN,
-      tessedit_char_whitelist:
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz .'",
-    });
-    results.push(await worker.recognize(image));
-
-    // Pass 3: Numbers and money amounts optimization
-    if (onProgress) {
-      onProgress({
-        status: "OCR Pass 3: Money and numbers extraction...",
-        progress: 55,
-      });
-    }
-
-    await worker.setParameters({
-      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-      tessedit_char_whitelist: "0123456789.$",
-    });
-    results.push(await worker.recognize(image));
-
-    // Pass 4: Sports abbreviations and stats
-    if (onProgress) {
-      onProgress({
-        status: "OCR Pass 4: Sports data extraction...",
-        progress: 65,
-      });
-    }
-
-    await worker.setParameters({
-      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-      tessedit_char_whitelist:
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -+@():",
-    });
-    results.push(await worker.recognize(image));
-
-    // Pass 5: Raw text extraction (no character restrictions)
-    if (onProgress) {
-      onProgress({
-        status: "OCR Pass 5: Raw text extraction...",
-        progress: 75,
-      });
-    }
-
-    await worker.setParameters({
-      tessedit_pageseg_mode: Tesseract.PSM.AUTO,
-      tessedit_char_whitelist: "",
-    });
-    results.push(await worker.recognize(image));
-
-    // Reset to default configuration
-    await worker.setParameters({
-      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-      tessedit_char_whitelist:
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .$-+@():",
-    });
+    const fullResult = await worker.recognize(image);
+    results.push({ ...fullResult, region: "full" });
 
     return results;
+  }
+
+  // Detect UI regions in PrizePick screenshots based on layout analysis
+  private detectUIRegions(image: HTMLCanvasElement): {
+    header: { left: number; top: number; width: number; height: number };
+    playerCards: Array<{
+      left: number;
+      top: number;
+      width: number;
+      height: number;
+    }>;
+    footer: { left: number; top: number; width: number; height: number };
+  } {
+    const width = image.width;
+    const height = image.height;
+
+    // Based on PrizePick layout analysis:
+    // Header: top 15% contains lineup type and money amounts
+    // Player cards: stacked vertically, each ~20% of height
+    // Footer: bottom 10% contains timestamp and branding
+
+    const headerHeight = Math.floor(height * 0.15);
+    const footerHeight = Math.floor(height * 0.1);
+    const playerAreaHeight = height - headerHeight - footerHeight;
+
+    // Estimate number of player cards (2-6 typical range)
+    const estimatedPlayerCount = Math.max(
+      2,
+      Math.min(6, Math.floor(playerAreaHeight / (height * 0.12))),
+    );
+    const playerCardHeight = Math.floor(
+      playerAreaHeight / estimatedPlayerCount,
+    );
+
+    const header = {
+      left: 0,
+      top: 0,
+      width: width,
+      height: headerHeight,
+    };
+
+    const playerCards = [];
+    for (let i = 0; i < estimatedPlayerCount; i++) {
+      playerCards.push({
+        left: 0,
+        top: headerHeight + i * playerCardHeight,
+        width: width,
+        height: playerCardHeight,
+      });
+    }
+
+    const footer = {
+      left: 0,
+      top: height - footerHeight,
+      width: width,
+      height: footerHeight,
+    };
+
+    console.log(
+      `Detected UI regions: header=${JSON.stringify(header)}, playerCards=${playerCards.length}, footer=${JSON.stringify(footer)}`,
+    );
+
+    return { header, playerCards, footer };
+  }
+
+  // Process a specific region of the image with custom OCR parameters
+  private async processRegion(
+    worker: Tesseract.Worker,
+    image: HTMLCanvasElement,
+    region: { left: number; top: number; width: number; height: number },
+    ocrParams: Record<string, any>,
+  ): Promise<any> {
+    // Set OCR parameters for this region
+    await worker.setParameters(ocrParams);
+
+    // Process the specific region
+    const result = await worker.recognize(image, {
+      rectangle: {
+        left: region.left,
+        top: region.top,
+        width: region.width,
+        height: region.height,
+      },
+    });
+
+    console.log(
+      `Region OCR result (${region.left},${region.top},${region.width}x${region.height}):`,
+      result.data.text,
+      `Confidence: ${result.data.confidence}%`,
+    );
+
+    return result;
   }
 
   private async preprocessImage(imageFile: File): Promise<HTMLCanvasElement> {
