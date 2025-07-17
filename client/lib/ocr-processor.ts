@@ -550,24 +550,19 @@ function parseAggressivePrizePickFromOCR(ocrText: string): PrizePickLineup[] {
     };
 
     // Create players
-    const numPlayers = Math.max(
-      1,
-      Math.min(pickCount, uniqueNames.length || 3),
-    );
+    const numPlayers = Math.max(1, Math.min(pickCount, finalNames.length || 3));
 
     for (let i = 0; i < numPlayers; i++) {
+      const playerLine =
+        possibleLines[i % Math.max(1, possibleLines.length)] ||
+        15 + Math.random() * 10;
+
       const player: PrizePickPlayer = {
         name: finalNames[i] || `Player ${i + 1}`,
         sport: foundSports[i % Math.max(1, foundSports.length)] || "Unknown",
         statType: foundStats[i % Math.max(1, foundStats.length)] || "Points",
-        line:
-          possibleLines[i % Math.max(1, possibleLines.length)] ||
-          15 + Math.random() * 10,
-        direction: determineBetDirection(
-          ocrText,
-          finalNames[i],
-          possibleLines[i],
-        ),
+        line: playerLine,
+        direction: determineBetDirection(ocrText, finalNames[i], playerLine),
       };
 
       lineup.players.push(player);
