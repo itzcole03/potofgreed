@@ -448,12 +448,28 @@ function extractReliableData(text: string) {
     data.hasValidContent = true;
   }
 
-  // Extract money amounts
-  const moneyMatch = text.match(/\$(\d+).*?\$(\d+)/i);
-  if (moneyMatch) {
-    data.entryAmount = parseInt(moneyMatch[1]);
-    data.potentialPayout = parseInt(moneyMatch[2]);
-    data.hasValidContent = true;
+  // Extract money amounts with better patterns
+  const moneyPatterns = [
+    /\$(\d+\.\d+).*?\$(\d+\.\d+)/i, // "$9.30" and "$3.10"
+    /\$(\d+).*?\$(\d+)/i,
+    /(\d+)[-\s]*pick.*\$(\d+\.\d+)/i, // "2-Pick $9.30"
+  ];
+
+  for (const pattern of moneyPatterns) {
+    const moneyMatch = text.match(pattern);
+    if (moneyMatch) {
+      if (pattern.source.includes("pick.*\\$")) {
+        // Format: "2-Pick $9.30"
+        data.entryAmount = parseFloat(moneyMatch[2]);
+        data.potentialPayout = parseFloat(moneyMatch[2]) * 2; // Estimate payout
+      } else {
+        // Format: "$9.30" and "$3.10"
+        data.entryAmount = parseFloat(moneyMatch[1]);
+        data.potentialPayout = parseFloat(moneyMatch[2]);
+      }
+      data.hasValidContent = true;
+      break;
+    }
   }
 
   // Extract sports
