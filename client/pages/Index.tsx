@@ -24,6 +24,11 @@ import {
   Trash2,
   Upload,
   Zap,
+  Calendar,
+  Trophy,
+  X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   samplePrizePickData,
@@ -393,79 +398,36 @@ export default function Index() {
           <div className="lg:col-span-2">
             <Card className="border-border bg-card">
               <CardHeader>
-                <CardTitle>Bet History</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5" />
+                  Bet History
+                </CardTitle>
                 <CardDescription>Your recent betting activity</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {bets.map((bet) => (
-                    <div
+                    <BetHistoryCard
                       key={bet.id}
-                      className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/20"
-                    >
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{bet.team}</span>
-                          <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded">
-                            {bet.sport}
-                          </span>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {bet.odds} • ${bet.stake} • {bet.date}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {bet.result === "pending" && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                updateBetResult(
-                                  bet.id,
-                                  "win",
-                                  calculatePayout(bet.odds, bet.stake),
-                                )
-                              }
-                            >
-                              Win
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => updateBetResult(bet.id, "loss")}
-                            >
-                              Loss
-                            </Button>
-                          </>
-                        )}
-
-                        {bet.result === "win" && (
-                          <div className="text-primary font-medium">
-                            +${(bet.payout! - bet.stake).toFixed(2)}
-                          </div>
-                        )}
-
-                        {bet.result === "loss" && (
-                          <div className="text-destructive font-medium">
-                            -${bet.stake.toFixed(2)}
-                          </div>
-                        )}
-
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteBet(bet.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
+                      bet={bet}
+                      onUpdateResult={updateBetResult}
+                      onDelete={deleteBet}
+                      calculatePayout={calculatePayout}
+                    />
                   ))}
 
                   {bets.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No bets recorded yet. Add your first bet to get started!
+                    <div className="text-center py-12">
+                      <div className="mx-auto w-24 h-24 bg-muted/50 rounded-full flex items-center justify-center mb-4">
+                        <Trophy className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-lg font-medium text-foreground mb-2">
+                        No bets recorded yet
+                      </h3>
+                      <p className="text-muted-foreground mb-4">
+                        Add your first bet or import PrizePick data to get
+                        started!
+                      </p>
                     </div>
                   )}
                 </div>
