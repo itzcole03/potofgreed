@@ -1695,23 +1695,15 @@ function determineEntryAndPayout(
   amount1: number,
   amount2: number,
 ): { entryAmount: number; potentialPayout: number } {
-  // Training data shows these patterns:
-  // 2-Pick: Entry usually smaller than payout (e.g., $3.10 -> $9.30)
-  // 3-Pick+: Entry usually larger than payout (e.g., $30 -> $5)
+  // Training data shows these patterns across ALL pickup types:
+  // Entry is almost always SMALLER than payout (except for loss cases)
+  // Examples: $3.10 -> $9.30, $5 -> $30, $10 -> $200, etc.
 
-  if (pickCount === 2) {
-    // For 2-Pick, smaller amount is usually entry
-    return {
-      entryAmount: Math.min(amount1, amount2),
-      potentialPayout: Math.max(amount1, amount2),
-    };
-  } else {
-    // For 3-Pick+, larger amount is usually entry
-    return {
-      entryAmount: Math.max(amount1, amount2),
-      potentialPayout: Math.min(amount1, amount2),
-    };
-  }
+  // Always use smaller amount as entry, larger as payout
+  return {
+    entryAmount: Math.min(amount1, amount2),
+    potentialPayout: Math.max(amount1, amount2),
+  };
 }
 
 // Estimate payout based on training data patterns
