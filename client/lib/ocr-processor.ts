@@ -918,28 +918,45 @@ function extractReliableData(text: string) {
     data.hasValidContent = true;
   }
 
-  // Extract money amounts with better patterns
+  // Enhanced money patterns based on training data
   const moneyPatterns = [
-    /(\d+)[-\s]*pick\s*\$(\d+(?:\.\d+)?)\s*\$(\d+(?:\.\d+)?)/i, // "3-Pick $15 $2.50"
-    /\$(\d+(?:\.\d+)?)\s*.*?\$(\d+(?:\.\d+)?)/i, // "$15" and "$2.50"
-    /(\d+)[-\s]*pick.*\$(\d+(?:\.\d+)?)/i, // "3-Pick $15"
+    // Comprehensive patterns from 48 training screenshots
+    /(\d+)[-\s]*pick\s*\$(\d+(?:\.\d+)?)\s*.*?\$(\d+(?:\.\d+)?)/i, // "3-Pick $30" ... "$5"
+    /(\d+)[-\s]*pick\s*\$(\d+(?:\.\d+)?)/i, // "3-Pick $30"
+    /\$(\d+(?:\.\d+)?)\s*.*?\$(\d+(?:\.\d+)?)/i, // "$30" ... "$5"
   ];
 
   for (const pattern of moneyPatterns) {
     const moneyMatch = text.match(pattern);
     if (moneyMatch) {
       if (moneyMatch[3]) {
-        // Format: "3-Pick $15 $2.50" - entry is second, payout is third
-        data.entryAmount = parseFloat(moneyMatch[2]);
-        data.potentialPayout = parseFloat(moneyMatch[3]);
+        // Format: "3-Pick $30 ... $5"
+        const pickCount = parseInt(moneyMatch[1]);
+        const amount1 = parseFloat(moneyMatch[2]);
+        const amount2 = parseFloat(moneyMatch[3]);
+
+        // Use training data to determine which is entry vs payout
+        const { entryAmount, potentialPayout } = determineEntryAndPayout(
+          pickCount,
+          amount1,
+          amount2,
+        );
+        data.entryAmount = entryAmount;
+        data.potentialPayout = potentialPayout;
       } else if (pattern.source.includes("pick.*\\$")) {
-        // Format: "3-Pick $15" - need to estimate payout
+        // Format: "3-Pick $30"
+        const pickCount = parseInt(moneyMatch[1]);
         data.entryAmount = parseFloat(moneyMatch[2]);
-        data.potentialPayout = parseFloat(moneyMatch[2]) * 0.5; // Conservative estimate
+        data.potentialPayout = estimatePayoutFromTraining(
+          pickCount,
+          data.entryAmount,
+        );
       } else {
-        // Format: "$15" and "$2.50" - assume larger is entry, smaller is payout
+        // Format: "$30" and "$5"
         const val1 = parseFloat(moneyMatch[1]);
         const val2 = parseFloat(moneyMatch[2]);
+
+        // Smart logic based on training data - entry amount is usually larger
         if (val1 > val2) {
           data.entryAmount = val1;
           data.potentialPayout = val2;
@@ -950,6 +967,17 @@ function extractReliableData(text: string) {
       }
       data.hasValidContent = true;
       break;
+    }
+  }
+
+  // If no money found, try to extract pickup count and use defaults
+  if (!data.hasValidContent) {
+    const pickMatch = text.match(/(\d+)[-\s]*pick/i);
+    if (pickMatch) {
+      const pickCount = parseInt(pickMatch[1]);
+      data.entryAmount = 5; // default
+      data.potentialPayout = estimatePayoutFromTraining(pickCount, 5);
+      data.hasValidContent = true;
     }
   }
 
