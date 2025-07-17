@@ -256,24 +256,83 @@ export function parsePrizePickFromOCR(ocrText: string): PrizePickLineup[] {
     .map((m) => parseFloat(m[1]))
     .filter((n) => n > 0.5 && n < 100); // Reasonable range for sport lines
 
-  // Extract sports
-  const sportPattern = /(NFL|NBA|NHL|MLB|TENNIS|PGA|GOLF|SOCCER)/gi;
-  const sports = [...ocrText.matchAll(sportPattern)].map((m) => {
-    const sport = m[1].toLowerCase();
-    return sport === "pga"
-      ? "Golf"
-      : sport.charAt(0).toUpperCase() + sport.slice(1);
+  // Extract sports with expanded patterns
+  const sportPatterns = [
+    /(NFL|NBA|NHL|MLB|NBASL|NBASLH|WNBA|TENNIS|PGA|GOLF|SOCCER|MMA|HRDERBY|ALLSTAR)/gi,
+    /(basketball|football|baseball|hockey|tennis|golf|soccer|mma|boxing)/gi,
+  ];
+
+  const sports: string[] = [];
+  sportPatterns.forEach((pattern) => {
+    const matches = [...ocrText.matchAll(pattern)];
+    matches.forEach((m) => {
+      const sport = m[1].toLowerCase();
+      let formatted = sport;
+
+      // Map sport codes to full names
+      const sportMapping: Record<string, string> = {
+        nfl: "NFL",
+        nba: "NBA",
+        nhl: "NHL",
+        mlb: "MLB",
+        nbasl: "NBASLH",
+        nbaslh: "NBASLH",
+        wnba: "WNBA",
+        tennis: "Tennis",
+        pga: "Golf",
+        golf: "Golf",
+        soccer: "Soccer",
+        mma: "MMA",
+        hrderby: "HRDERBY",
+        allstar: "ALLSTAR",
+        basketball: "NBA",
+        football: "NFL",
+        baseball: "MLB",
+        hockey: "NHL",
+        boxing: "MMA",
+      };
+
+      formatted =
+        sportMapping[sport] || sport.charAt(0).toUpperCase() + sport.slice(1);
+      if (!sports.includes(formatted)) {
+        sports.push(formatted);
+      }
+    });
   });
 
-  // Extract stat types
-  const statPattern =
-    /(strokes|fantasy\s+score|double\s+faults|total\s+games|points|assists|rebounds|touchdowns)/gi;
-  const stats = [...ocrText.matchAll(statPattern)].map((m) =>
-    m[1]
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" "),
-  );
+  // Extract stat types with comprehensive pattern matching
+  const statPatterns = [
+    // Combined stats
+    /pts\s*\+\s*rebs\s*\+\s*asts/gi,
+    /hits\s*\+\s*runs\s*\+\s*rbis/gi,
+    /pts\s*\+\s*rebs/gi,
+    /pts\s*\+\s*asts/gi,
+    /rebs\s*\+\s*asts/gi,
+    // Single stats
+    /(strokes|fantasy\s+score|double\s+faults|total\s+games|points|assists|rebounds|touchdowns|home\s+runs|rbis|runs|hits|strikeouts|stolen\s+bases|walks|saves|doubles|triples|blocks|steals|turnovers|fg\s+made|fg\s+attempted|ft\s+made|3pt\s+made|aces|birdies|eagles|bogeys|goals|shots|passes|tackles|takedowns|significant\s+strikes)/gi,
+    // Pitcher/Hitter specific
+    /(pitcher\s+strikeouts|hitter\s+fantasy\s+score|innings\s+pitched|earned\s+runs|pitches\s+thrown|hits\s+allowed)/gi,
+    // Sport-specific combinations
+    /(birdies\s+or\s+better|greens\s+in\s+regulation|fairways\s+hit|total\s+distance|driving\s+distance)/gi,
+  ];
+
+  const stats: string[] = [];
+  statPatterns.forEach((pattern) => {
+    const matches = [...ocrText.matchAll(pattern)];
+    matches.forEach((m) => {
+      const formatted = m[0]
+        .replace(/\s+/g, " ")
+        .split(" ")
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+        )
+        .join(" ")
+        .replace(/\+/g, "+"); // Keep + symbols
+      if (!stats.includes(formatted)) {
+        stats.push(formatted);
+      }
+    });
+  });
 
   // Create players from extracted data
   const players: PrizePickPlayer[] = [];
@@ -426,13 +485,64 @@ function extractReliableData(text: string) {
     }
   }
 
-  // Extract stat types
+  // Extract stat types with comprehensive mapping
   const statKeywords = {
-    Strokes: /strokes?/gi,
-    "Fantasy Score": /(fantasy.*score|score)/gi,
-    "Total Games": /(total.*games?|games?)/gi,
-    Points: /points?/gi,
-    "Double Faults": /faults?/gi,
+    // Basketball stats
+    Points: /\bpoints?\b/gi,
+    Rebounds: /\brebound(s)?\b/gi,
+    Assists: /\bassists?\b/gi,
+    "Pts+Rebs+Asts":
+      /(pts?\s*\+\s*rebs?\s*\+\s*asts?)|(points?\s*\+\s*rebounds?\s*\+\s*assists?)/gi,
+    "Pts+Rebs": /(pts?\s*\+\s*rebs?)|(points?\s*\+\s*rebounds?)/gi,
+    "Pts+Asts": /(pts?\s*\+\s*asts?)|(points?\s*\+\s*assists?)/gi,
+    "Rebs+Asts": /(rebs?\s*\+\s*asts?)|(rebounds?\s*\+\s*assists?)/gi,
+    "Fantasy Score": /(fantasy.*score|fantasy)/gi,
+    "FG Made": /fg\s+made/gi,
+    "FG Attempted": /fg\s+attempted/gi,
+    "3PT Made": /3pt\s+made/gi,
+    "FT Made": /ft\s+made/gi,
+    Steals: /\bsteals?\b/gi,
+    Blocks: /\bblocks?\b/gi,
+    Turnovers: /\bturnovers?\b/gi,
+
+    // Baseball stats
+    Hits: /\bhits?\b/gi,
+    "Home Runs": /home\s+runs?/gi,
+    RBIs: /\brbis?\b/gi,
+    Runs: /\bruns?\b/gi,
+    "Pitcher Strikeouts": /pitcher\s+strikeouts?/gi,
+    "Hitter Fantasy Score": /hitter\s+fantasy\s+score/gi,
+    "Hits+Runs+RBIs": /(hits?\s*\+\s*runs?\s*\+\s*rbis?)/gi,
+    "Stolen Bases": /stolen\s+bases?/gi,
+    Walks: /\bwalks?\b/gi,
+    Saves: /\bsaves?\b/gi,
+    "Innings Pitched": /innings?\s+pitched/gi,
+
+    // Tennis stats
+    "Total Games": /(total.*games?|total\s+games)/gi,
+    "Double Faults": /(double\s+faults?|faults?)/gi,
+    Aces: /\baces?\b/gi,
+    "Total Games Won": /total\s+games?\s+won/gi,
+    "Break Points Won": /break\s+points?\s+won/gi,
+
+    // Golf stats
+    Strokes: /\bstrokes?\b/gi,
+    "Birdies Or Better": /birdies?\s+(or\s+)?better/gi,
+    Birdies: /\bbirdies?\b/gi,
+    Eagles: /\beagles?\b/gi,
+    Bogeys: /\bbogeys?\b/gi,
+
+    // Soccer stats
+    Goals: /\bgoals?\b/gi,
+    Shots: /\bshots?\b/gi,
+    "Passes Attempted": /passes?\s+attempted/gi,
+    "Shots On Target": /shots?\s+on\s+target/gi,
+    "Goalie Saves": /goalie\s+saves?/gi,
+
+    // MMA stats
+    "Significant Strikes": /significant\s+strikes?/gi,
+    Takedowns: /\btakedowns?\b/gi,
+    "Fight Time": /fight\s+time/gi,
   };
 
   Object.entries(statKeywords).forEach(([stat, regex]) => {
