@@ -310,16 +310,9 @@ export function parseAdvancedPrizePickFromOCR(
 ): PrizePickLineup[] {
   console.log("Advanced parsing OCR text:", ocrText);
 
-  // Try structured parsing first, then fall back to aggressive
-  const structuredLineups = parseStructuredPrizePickFromOCR(ocrText);
-  if (structuredLineups.length > 0) {
-    console.log("Structured parsing successful:", structuredLineups);
-    return structuredLineups;
-  }
-
-  // Fall back to aggressive parsing
-  const lineups = parseAggressivePrizePickFromOCR(ocrText);
-  console.log("Fallback parsing result:", lineups);
+  // Use intelligent OCR-aware parser that handles poor quality text
+  const lineups = parseIntelligentPrizePickFromOCR(ocrText);
+  console.log("Intelligent parsing result:", lineups);
   return lineups;
 }
 
