@@ -52,6 +52,184 @@ interface Bet {
   date: string;
 }
 
+interface BetHistoryCardProps {
+  bet: Bet;
+  onUpdateResult: (id: string, result: "win" | "loss", payout?: number) => void;
+  onDelete: (id: string) => void;
+  calculatePayout: (odds: string, stake: number) => number;
+}
+
+function BetHistoryCard({
+  bet,
+  onUpdateResult,
+  onDelete,
+  calculatePayout,
+}: BetHistoryCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const isPrizePick = bet.sport === "PrizePicks";
+  const isWin = bet.result === "win";
+  const isLoss = bet.result === "loss";
+  const isPending = bet.result === "pending";
+
+  const profit = isWin && bet.payout ? bet.payout - bet.stake : 0;
+  const loss = isLoss ? bet.stake : 0;
+
+  const getStatusColor = () => {
+    if (isWin) return "text-primary bg-primary/10";
+    if (isLoss) return "text-destructive bg-destructive/10";
+    return "text-yellow-600 bg-yellow-600/10";
+  };
+
+  const getStatusIcon = () => {
+    if (isWin) return <TrendingUp className="h-3 w-3" />;
+    if (isLoss) return <TrendingDown className="h-3 w-3" />;
+    return <Target className="h-3 w-3" />;
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const parseTeamDetails = (teamString: string) => {
+    // For PrizePick entries, extract meaningful details
+    if (isPrizePick) {
+      const parts = teamString.split(" - ");
+      if (parts.length > 1) {
+        return {
+          title: parts[0],
+          details: parts[1],
+        };
+      }
+    }
+    return {
+      title: teamString,
+      details: null,
+    };
+  };
+
+  const { title, details } = parseTeamDetails(bet.team);
+
+  return (
+    <div className="group border border-border/50 rounded-xl bg-gradient-to-r from-card to-card/50 hover:border-border transition-all duration-200 hover:shadow-md">
+      {/* Header */}
+      <div className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex-1 space-y-2">
+            {/* Title and Sport Badge */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-foreground leading-tight">
+                {title}
+              </h3>
+              <div className="flex items-center gap-1">
+                <span
+                  className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    isPrizePick
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {bet.sport}
+                </span>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full font-medium flex items-center gap-1 ${getStatusColor()}`}
+                >
+                  {getStatusIcon()}
+                  {bet.result.charAt(0).toUpperCase() + bet.result.slice(1)}
+                </span>
+              </div>
+            </div>
+
+            {/* Details */}
+            {details && (
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {details}
+              </p>
+            )}
+
+            {/* Bet Info */}
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <DollarSign className="h-3 w-3" />
+                <span className="font-medium">${bet.stake}</span>
+                {bet.odds && <span className="text-xs">({bet.odds})</span>}
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                <span>{formatDate(bet.date)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions and Result */}
+          <div className="flex items-center gap-2 ml-4">
+            {isPending && (
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-8 px-3 text-xs"
+                  onClick={() =>
+                    onUpdateResult(
+                      bet.id,
+                      "win",
+                      calculatePayout(bet.odds, bet.stake),
+                    )
+                  }
+                >
+                  Win
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 px-3 text-xs"
+                  onClick={() => onUpdateResult(bet.id, "loss")}
+                >
+                  Loss
+                </Button>
+              </div>
+            )}
+
+            {isWin && (
+              <div className="text-right">
+                <div className="text-primary font-bold text-lg">
+                  +${profit.toFixed(2)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  ${bet.payout?.toFixed(2)} total
+                </div>
+              </div>
+            )}
+
+            {isLoss && (
+              <div className="text-right">
+                <div className="text-destructive font-bold text-lg">
+                  -${loss.toFixed(2)}
+                </div>
+                <div className="text-xs text-muted-foreground">Lost stake</div>
+              </div>
+            )}
+
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => onDelete(bet.id)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Index() {
   const [bets, setBets] = useState<Bet[]>([]);
 
