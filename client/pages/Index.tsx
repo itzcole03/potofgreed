@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -82,6 +82,8 @@ export default function Index() {
     stake: "",
   });
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const totalWagered = bets.reduce((sum, bet) => sum + bet.stake, 0);
   const totalWon = bets
     .filter((bet) => bet.result === "win")
@@ -124,6 +126,27 @@ export default function Index() {
 
   const importSamplePrizePickData = () => {
     importPrizePickData(samplePrizePickData);
+  };
+
+  const handleImageUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      // For now, we'll import sample data when an image is selected
+      // In the future, this could process the actual image using OCR
+      console.log("Selected file:", file.name);
+      importPrizePickData(samplePrizePickData);
+
+      // Reset the input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } else {
+      alert("Please select a valid image file");
+    }
   };
 
   const updateBetResult = (
@@ -299,18 +322,34 @@ export default function Index() {
                   your PrizePick account data.
                 </div>
 
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
                 <Button
-                  onClick={importSamplePrizePickData}
+                  onClick={handleImageUpload}
                   variant="outline"
                   className="w-full"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  Import Sample Data
+                  Upload PrizePick Screenshot
                 </Button>
 
                 <div className="text-xs text-muted-foreground text-center">
-                  This will add 2 sample PrizePick lineups to your tracker
+                  Select a PrizePick screenshot to import lineup data
                 </div>
+
+                <Button
+                  onClick={importSamplePrizePickData}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs"
+                >
+                  Or try sample data
+                </Button>
               </CardContent>
             </Card>
           </div>
