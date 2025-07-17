@@ -443,6 +443,8 @@ export default function Index() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState("");
+  const [showCorrectionModal, setShowCorrectionModal] = useState(false);
+  const [pendingLineup, setPendingLineup] = useState<any>(null);
   const ocrProcessor = useRef(new OCRProcessor());
 
   const totalWagered = bets.reduce((sum, bet) => sum + bet.stake, 0);
@@ -520,15 +522,10 @@ export default function Index() {
       const lineups = parseAdvancedPrizePickFromOCR(ocrText);
 
       if (lineups.length > 0) {
-        const prizePickData: PrizePickData = { lineups };
-        importPrizePickData(prizePickData);
-        setProcessingStatus(
-          `Successfully imported ${lineups.length} lineup(s)!`,
-        );
-
-        setTimeout(() => {
-          setProcessingStatus("");
-        }, 3000);
+        // Show correction modal for user review
+        setPendingLineup(lineups[0]);
+        setShowCorrectionModal(true);
+        setProcessingStatus("Review and correct the detected data");
       } else {
         setProcessingStatus(
           "No PrizePick data detected. Try sample data instead.",
@@ -742,9 +739,15 @@ export default function Index() {
                     Or try sample data
                   </Button>
 
-                  <div className="text-xs text-center text-muted-foreground">
-                    💡 <strong>Pro tip:</strong> For best results, ensure
-                    screenshots are clear and well-lit
+                  <div className="text-xs text-center text-muted-foreground space-y-1">
+                    <div>
+                      💡 <strong>Pro tip:</strong> For best results, ensure
+                      screenshots are clear and well-lit
+                    </div>
+                    <div className="text-xs opacity-75">
+                      ✨ You'll be able to review and edit the detected data
+                      before importing
+                    </div>
                   </div>
                 </div>
               </CardContent>
