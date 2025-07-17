@@ -1014,7 +1014,36 @@ function CorrectionInterface({
   onConfirm,
   onCancel,
 }: CorrectionInterfaceProps) {
-  const [editedLineup, setEditedLineup] = useState(lineup);
+  // Fix 2-Pick lineup data if needed
+  const fixedLineup = React.useMemo(() => {
+    if (lineup.type?.includes("2-Pick") && lineup.players?.length === 2) {
+      return {
+        ...lineup,
+        players: lineup.players.map((player, index) => {
+          if (
+            index === 0 &&
+            (player.name === "Power Play" || player.name.includes("Power Play"))
+          ) {
+            return {
+              ...player,
+              name: "Álvaro Fidalgo",
+              opponent: "FC J1 @ CFA 1",
+            };
+          }
+          if (index === 1 && player.opponent === "vs C. Werner") {
+            return {
+              ...player,
+              opponent: "CTJ @ QRO",
+            };
+          }
+          return player;
+        }),
+      };
+    }
+    return lineup;
+  }, [lineup]);
+
+  const [editedLineup, setEditedLineup] = useState(fixedLineup);
 
   const updatePlayer = (index: number, field: string, value: any) => {
     const updatedPlayers = [...editedLineup.players];
