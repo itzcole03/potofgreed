@@ -10,6 +10,7 @@ export interface TrainingDataPattern {
   entryAmounts: number[];
   venues: Record<string, string[]>;
   payoutMultipliers: Record<string, number>;
+  resultStatuses: string[];
 }
 
 export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
