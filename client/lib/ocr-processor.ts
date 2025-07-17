@@ -19,12 +19,35 @@ export class OCRProcessor {
         logger: (m) => console.log("OCR:", m),
       });
 
-      // Configure OCR for better mobile screenshot recognition
+      // Configure OCR with optimized parameters for mobile screenshots
       await this.worker.setParameters({
-        tessedit_char_whitelist:
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .$-",
+        // Use LSTM-only engine for better accuracy on modern text
+        tessedit_ocr_engine_mode: Tesseract.OEM.LSTM_ONLY,
+
+        // Single block mode works best for mobile UI sections
         tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+
+        // Character whitelist optimized for sports betting data
+        tessedit_char_whitelist:
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .$-+@():",
+
+        // Preserve spaces for better word detection
         preserve_interword_spaces: "1",
+
+        // Optimize for better text detection
+        textord_really_old_xheight: "0",
+        textord_min_xheight: "10",
+
+        // Improve number recognition
+        classify_enable_learning: "0",
+        classify_enable_adaptive_matcher: "1",
+
+        // Better handling of punctuation
+        tessedit_make_boxes_from_boxes: "0",
+
+        // Confidence thresholds
+        tessedit_reject_mode: "0",
+        tessedit_zero_rejection: "0",
       });
     }
     return this.worker;
