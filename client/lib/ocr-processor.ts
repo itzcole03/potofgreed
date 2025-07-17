@@ -868,6 +868,377 @@ export class OCRProcessor {
       confidence: bestResult.confidence,
     };
   }
+
+  // Comprehensive data validation for extracted betting data
+  validateExtractedData(data: {
+    lineupType: string;
+    entryAmount: number;
+    potentialPayout: number;
+    players: any[];
+  }): {
+    isValid: boolean;
+    errors: string[];
+    correctedData?: any;
+  } {
+    const errors: string[] = [];
+    const correctedData = { ...data };
+
+    // Validate entry amount
+    const entryValidation = this.validateEntryAmount(
+      data.entryAmount,
+      data.lineupType,
+    );
+    if (!entryValidation.isValid) {
+      errors.push(...entryValidation.errors);
+      if (entryValidation.suggestedValue) {
+        correctedData.entryAmount = entryValidation.suggestedValue;
+      }
+    }
+
+    // Validate potential payout
+    const payoutValidation = this.validatePotentialPayout(
+      data.potentialPayout,
+      data.entryAmount,
+      data.lineupType,
+    );
+    if (!payoutValidation.isValid) {
+      errors.push(...payoutValidation.errors);
+      if (payoutValidation.suggestedValue) {
+        correctedData.potentialPayout = payoutValidation.suggestedValue;
+      }
+    }
+
+    // Validate payout ratio
+    const ratioValidation = this.validatePayoutRatio(
+      data.entryAmount,
+      data.potentialPayout,
+      data.lineupType,
+    );
+    if (!ratioValidation.isValid) {
+      errors.push(...ratioValidation.errors);
+    }
+
+    // Validate players
+    const playersValidation = this.validatePlayers(
+      data.players,
+      data.lineupType,
+    );
+    if (!playersValidation.isValid) {
+      errors.push(...playersValidation.errors);
+      if (playersValidation.correctedPlayers) {
+        correctedData.players = playersValidation.correctedPlayers;
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      correctedData: errors.length > 0 ? correctedData : undefined,
+    };
+  }
+
+  // Validate entry amount against known ranges
+  private validateEntryAmount(
+    amount: number,
+    lineupType: string,
+  ): {
+    isValid: boolean;
+    errors: string[];
+    suggestedValue?: number;
+  } {
+    const errors: string[] = [];
+
+    // General constraints
+    if (amount <= 0) {
+      errors.push("Entry amount must be greater than 0");
+      return { isValid: false, errors, suggestedValue: 5.0 };
+    }
+
+    if (amount > 1000) {
+      errors.push("Entry amount seems unreasonably high (>$1000)");
+      return { isValid: false, errors, suggestedValue: 50.0 };
+    }
+
+    // Lineup-specific validation based on training data
+    const validRanges: Record<
+      string,
+      { min: number; max: number; common: number[] }
+    > = {
+      "2-Pick": { min: 1.0, max: 100.0, common: [2.5, 5.0, 8.4] },
+      "3-Pick": { min: 1.0, max: 200.0, common: [2.5, 5.0, 10.0, 15.0, 30.0] },
+      "4-Pick": { min: 1.0, max: 500.0, common: [5.0, 6.0, 10.0, 40.0] },
+      "5-Pick": { min: 1.0, max: 500.0, common: [10.0] },
+      "6-Pick": { min: 1.0, max: 1000.0, common: [4.0, 5.0, 6.0, 10.0] },
+    };
+
+    const range = validRanges[lineupType] || validRanges["2-Pick"];
+
+    if (amount < range.min || amount > range.max) {
+      errors.push(
+        `Entry amount $${amount} is outside expected range for ${lineupType} ($${range.min}-$${range.max})`,
+      );
+      return {
+        isValid: false,
+        errors,
+        suggestedValue: range.common[0],
+      };
+    }
+
+    return { isValid: true, errors };
+  }
+
+  // Validate potential payout
+  private validatePotentialPayout(
+    payout: number,
+    entry: number,
+    lineupType: string,
+  ): {
+    isValid: boolean;
+    errors: string[];
+    suggestedValue?: number;
+  } {
+    const errors: string[] = [];
+
+    if (payout <= 0) {
+      errors.push("Potential payout must be greater than 0");
+      return { isValid: false, errors, suggestedValue: entry * 2 };
+    }
+
+    if (payout < entry) {
+      errors.push(
+        "Potential payout should typically be greater than entry amount",
+      );
+      return { isValid: false, errors, suggestedValue: entry * 2 };
+    }
+
+    if (payout > entry * 100) {
+      errors.push("Potential payout seems unreasonably high compared to entry");
+      return { isValid: false, errors, suggestedValue: entry * 10 };
+    }
+
+    return { isValid: true, errors };
+  }
+
+  // Validate payout ratio makes sense for lineup type
+  private validatePayoutRatio(
+    entry: number,
+    payout: number,
+    lineupType: string,
+  ): {
+    isValid: boolean;
+    errors: string[];
+  } {
+    const errors: string[] = [];
+    const ratio = payout / entry;
+
+    // Expected ratio ranges based on training data
+    const expectedRatios: Record<string, { min: number; max: number }> = {
+      "2-Pick": { min: 1.5, max: 10 }, // 2.50->7.50 (3x), 8.40->67.20 (8x)
+      "3-Pick": { min: 2, max: 15 }, // 2.50->15.00 (6x), 30.00->5.00 (0.17x - loss case)
+      "4-Pick": { min: 1.5, max: 20 }, // 6.00->9.75 (1.6x), 10.00->100.00 (10x)
+      "5-Pick": { min: 5, max: 50 }, // 10.00->200.00 (20x)
+      "6-Pick": { min: 5, max: 50 }, // 5.00->125.00 (25x), 10.00->231.25 (23x)
+    };
+
+    const expected = expectedRatios[lineupType] || expectedRatios["2-Pick"];
+
+    if (ratio < expected.min || ratio > expected.max) {
+      errors.push(
+        `Payout ratio ${ratio.toFixed(2)}x seems unusual for ${lineupType} (expected ${expected.min}x-${expected.max}x)`,
+      );
+    }
+
+    return { isValid: errors.length === 0, errors };
+  }
+
+  // Validate player data
+  private validatePlayers(
+    players: any[],
+    lineupType: string,
+  ): {
+    isValid: boolean;
+    errors: string[];
+    correctedPlayers?: any[];
+  } {
+    const errors: string[] = [];
+    const correctedPlayers = [...players];
+
+    // Check player count matches lineup type
+    const expectedCount = parseInt(lineupType.split("-")[0]) || 2;
+    if (players.length !== expectedCount) {
+      errors.push(
+        `Expected ${expectedCount} players for ${lineupType}, found ${players.length}`,
+      );
+    }
+
+    // Validate each player
+    players.forEach((player, index) => {
+      const playerErrors = this.validateSinglePlayer(player, index);
+      if (playerErrors.length > 0) {
+        errors.push(...playerErrors);
+
+        // Apply corrections
+        if (correctedPlayers[index]) {
+          correctedPlayers[index] = this.correctPlayerData(player);
+        }
+      }
+    });
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      correctedPlayers: errors.length > 0 ? correctedPlayers : undefined,
+    };
+  }
+
+  // Validate individual player data
+  private validateSinglePlayer(player: any, index: number): string[] {
+    const errors: string[] = [];
+
+    // Validate name
+    if (!player.name || player.name === `Player ${index + 1}`) {
+      errors.push(`Player ${index + 1}: No valid name detected`);
+    } else if (!isValidPlayerName(player.name)) {
+      errors.push(
+        `Player ${index + 1}: "${player.name}" doesn't look like a valid player name`,
+      );
+    }
+
+    // Validate sport
+    const validSports = [
+      "WNBA",
+      "NBA",
+      "MLB",
+      "NFL",
+      "NHL",
+      "Tennis",
+      "Soccer",
+      "MMA",
+      "Golf",
+    ];
+    if (!validSports.includes(player.sport)) {
+      errors.push(`Player ${index + 1}: Invalid sport "${player.sport}"`);
+    }
+
+    // Validate betting line
+    if (
+      typeof player.line !== "number" ||
+      player.line < 0.1 ||
+      player.line > 200
+    ) {
+      errors.push(`Player ${index + 1}: Invalid betting line ${player.line}`);
+    }
+
+    // Validate sport-specific line ranges
+    const lineValidation = this.validateLineForSport(
+      player.line,
+      player.sport,
+      player.statType,
+    );
+    if (!lineValidation.isValid) {
+      errors.push(`Player ${index + 1}: ${lineValidation.error}`);
+    }
+
+    return errors;
+  }
+
+  // Validate betting line makes sense for sport and stat type
+  private validateLineForSport(
+    line: number,
+    sport: string,
+    statType: string,
+  ): {
+    isValid: boolean;
+    error?: string;
+  } {
+    const sportRanges: Record<
+      string,
+      Record<string, { min: number; max: number }>
+    > = {
+      WNBA: {
+        Points: { min: 1, max: 40 },
+        Rebounds: { min: 1, max: 20 },
+        Assists: { min: 1, max: 15 },
+        "Fantasy Score": { min: 5, max: 60 },
+      },
+      MLB: {
+        Hits: { min: 0.5, max: 5 },
+        "Home Runs": { min: 0.5, max: 3 },
+        RBIs: { min: 0.5, max: 8 },
+        "Hitter Fantasy Score": { min: 2, max: 20 },
+      },
+      Tennis: {
+        "Total Games": { min: 10, max: 40 },
+        Aces: { min: 1, max: 20 },
+        "Fantasy Score": { min: 10, max: 30 },
+      },
+      Golf: {
+        Strokes: { min: 65, max: 75 },
+        "Birdies Or Better": { min: 0.5, max: 5 },
+      },
+      Soccer: {
+        "Passes Attempted": { min: 10, max: 100 },
+        "Shots On Target": { min: 0.5, max: 10 },
+        Goals: { min: 0.5, max: 5 },
+      },
+    };
+
+    const sportRange = sportRanges[sport];
+    if (!sportRange) {
+      return { isValid: true }; // Unknown sport, can't validate
+    }
+
+    const statRange = sportRange[statType];
+    if (!statRange) {
+      return { isValid: true }; // Unknown stat type, can't validate
+    }
+
+    if (line < statRange.min || line > statRange.max) {
+      return {
+        isValid: false,
+        error: `Line ${line} for ${sport} ${statType} outside expected range (${statRange.min}-${statRange.max})`,
+      };
+    }
+
+    return { isValid: true };
+  }
+
+  // Apply corrections to player data
+  private correctPlayerData(player: any): any {
+    const corrected = { ...player };
+
+    // Correct invalid names
+    if (!isValidPlayerName(corrected.name)) {
+      corrected.name = "Unknown Player";
+    }
+
+    // Correct invalid sports
+    const validSports = [
+      "WNBA",
+      "NBA",
+      "MLB",
+      "NFL",
+      "NHL",
+      "Tennis",
+      "Soccer",
+      "MMA",
+      "Golf",
+    ];
+    if (!validSports.includes(corrected.sport)) {
+      corrected.sport = "Unknown";
+    }
+
+    // Correct unreasonable lines
+    if (
+      typeof corrected.line !== "number" ||
+      corrected.line < 0.1 ||
+      corrected.line > 200
+    ) {
+      corrected.line = 10; // Default reasonable value
+    }
+
+    return corrected;
+  }
 }
 
 export function parsePrizePickFromOCR(ocrText: string): PrizePickLineup[] {
