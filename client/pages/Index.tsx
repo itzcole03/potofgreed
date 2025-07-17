@@ -58,6 +58,11 @@ interface BetHistoryCardProps {
   ) => void;
   onDelete: (id: string) => void;
   calculatePayout: (odds: string, stake: number) => number;
+  onUpdatePick: (
+    betId: string,
+    pickIndex: number,
+    isWin: boolean | undefined,
+  ) => void;
 }
 
 function BetHistoryCard({
