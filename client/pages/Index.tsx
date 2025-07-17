@@ -31,6 +31,8 @@ import {
   ChevronUp,
   Eye,
   EyeOff,
+  RotateCcw,
+  Check,
 } from "lucide-react";
 import {
   samplePrizePickData,
@@ -49,7 +51,11 @@ type Bet = StoredBet;
 
 interface BetHistoryCardProps {
   bet: Bet;
-  onUpdateResult: (id: string, result: "win" | "loss", payout?: number) => void;
+  onUpdateResult: (
+    id: string,
+    result: "win" | "loss" | "pending",
+    payout?: number,
+  ) => void;
   onDelete: (id: string) => void;
   calculatePayout: (odds: string, stake: number) => number;
 }
@@ -169,7 +175,7 @@ function BetHistoryCard({
                 <Button
                   size="sm"
                   variant="default"
-                  className="h-8 px-3 text-xs"
+                  className="h-8 px-3 text-xs bg-primary hover:bg-primary/90 transition-colors"
                   onClick={() =>
                     onUpdateResult(
                       bet.id,
@@ -177,15 +183,19 @@ function BetHistoryCard({
                       calculatePayout(bet.odds, bet.stake),
                     )
                   }
+                  title="Mark as Win"
                 >
+                  <TrendingUp className="h-3 w-3 mr-1" />
                   Win
                 </Button>
                 <Button
                   size="sm"
                   variant="destructive"
-                  className="h-8 px-3 text-xs"
+                  className="h-8 px-3 text-xs hover:bg-destructive/90 transition-colors"
                   onClick={() => onUpdateResult(bet.id, "loss")}
+                  title="Mark as Loss"
                 >
+                  <TrendingDown className="h-3 w-3 mr-1" />
                   Loss
                 </Button>
               </div>
@@ -193,8 +203,19 @@ function BetHistoryCard({
 
             {isWin && (
               <div className="text-right">
-                <div className="text-primary font-bold text-lg">
-                  +${profit.toFixed(2)}
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="text-primary font-bold text-lg">
+                    +${profit.toFixed(2)}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 opacity-60 hover:opacity-100 transition-opacity"
+                    onClick={() => onUpdateResult(bet.id, "pending")}
+                    title="Revert to Pending"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </Button>
                 </div>
                 <div className="text-xs text-muted-foreground">
                   ${bet.payout?.toFixed(2)} total
@@ -204,8 +225,19 @@ function BetHistoryCard({
 
             {isLoss && (
               <div className="text-right">
-                <div className="text-destructive font-bold text-lg">
-                  -${loss.toFixed(2)}
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="text-destructive font-bold text-lg">
+                    -${loss.toFixed(2)}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 opacity-60 hover:opacity-100 transition-opacity"
+                    onClick={() => onUpdateResult(bet.id, "pending")}
+                    title="Revert to Pending"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </Button>
                 </div>
                 <div className="text-xs text-muted-foreground">Lost stake</div>
               </div>
@@ -469,12 +501,17 @@ export default function Index() {
 
   const updateBetResult = (
     id: string,
-    result: "win" | "loss",
+    result: "win" | "loss" | "pending",
     payout?: number,
   ) => {
     const updates = {
       result,
-      payout: result === "win" ? payout : undefined,
+      payout:
+        result === "win"
+          ? payout
+          : result === "pending"
+            ? undefined
+            : undefined,
     };
     const updatedBets = betStorage.updateBet(id, updates);
     setBets(updatedBets);
