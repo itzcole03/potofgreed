@@ -31,6 +31,10 @@ import {
   validatePrizePickData,
   type PrizePickData,
 } from "@/lib/prizepick-parser";
+import {
+  OCRProcessor,
+  parseAdvancedPrizePickFromOCR,
+} from "@/lib/ocr-processor";
 
 interface Bet {
   id: string;
@@ -83,6 +87,9 @@ export default function Index() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState("");
+  const ocrProcessor = useRef(new OCRProcessor());
 
   const totalWagered = bets.reduce((sum, bet) => sum + bet.stake, 0);
   const totalWon = bets
@@ -132,20 +139,61 @@ export default function Index() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      // For now, we'll import sample data when an image is selected
-      // In the future, this could process the actual image using OCR
-      console.log("Selected file:", file.name);
-      importPrizePickData(samplePrizePickData);
+    if (!file || !file.type.startsWith("image/")) {
+      alert("Please select a valid image file");
+      return;
+    }
+
+    setIsProcessing(true);
+    setProcessingStatus("Initializing OCR...");
+
+    try {
+      const ocrText = await ocrProcessor.current.processImage(
+        file,
+        (progress) => {
+          setProcessingStatus(progress.status);
+        },
+      );
+
+      setProcessingStatus("Parsing PrizePick data...");
+
+      const lineups = parseAdvancedPrizePickFromOCR(ocrText);
+
+      if (lineups.length > 0) {
+        const prizePickData: PrizePickData = { lineups };
+        importPrizePickData(prizePickData);
+        setProcessingStatus(
+          `Successfully imported ${lineups.length} lineup(s)!`,
+        );
+
+        setTimeout(() => {
+          setProcessingStatus("");
+        }, 3000);
+      } else {
+        setProcessingStatus(
+          "No PrizePick data detected. Try sample data instead.",
+        );
+        setTimeout(() => {
+          setProcessingStatus("");
+        }, 3000);
+      }
+    } catch (error) {
+      console.error("OCR processing failed:", error);
+      setProcessingStatus("Failed to process image. Try sample data instead.");
+      setTimeout(() => {
+        setProcessingStatus("");
+      }, 3000);
+    } finally {
+      setIsProcessing(false);
 
       // Reset the input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-    } else {
-      alert("Please select a valid image file");
     }
   };
 
@@ -333,14 +381,29 @@ export default function Index() {
                   onClick={handleImageUpload}
                   variant="outline"
                   className="w-full"
+                  disabled={isProcessing}
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload PrizePick Screenshot
+                  {isProcessing
+                    ? "Processing..."
+                    : "Upload PrizePick Screenshot"}
                 </Button>
 
-                <div className="text-xs text-muted-foreground text-center">
-                  Select a PrizePick screenshot to import lineup data
-                </div>
+                {processingStatus && (
+                  <div className="text-xs text-center p-2 rounded bg-muted/50">
+                    <div
+                      className={`${processingStatus.includes("Success") ? "text-primary" : processingStatus.includes("Failed") || processingStatus.includes("No PrizePick") ? "text-destructive" : "text-muted-foreground"}`}
+                    >
+                      {processingStatus}
+                    </div>
+                  </div>
+                )}
+
+                {!processingStatus && (
+                  <div className="text-xs text-muted-foreground text-center">
+                    Select a PrizePick screenshot to import lineup data
+                  </div>
+                )}
 
                 <Button
                   onClick={importSamplePrizePickData}
