@@ -34,28 +34,157 @@ export class OCRProcessor {
       const worker = await this.initialize();
 
       if (onProgress) {
-        onProgress({ status: "Processing image...", progress: 25 });
+        onProgress({ status: "Preprocessing image...", progress: 10 });
       }
 
-      // Enhanced recognition with better parameters for mobile screenshots
-      const {
-        data: { text, confidence },
-      } = await worker.recognize(imageFile, {
-        rectangle: undefined,
-      });
+      // Preprocess the image for better OCR
+      const preprocessedImage = await this.preprocessImage(imageFile);
 
-      console.log(`OCR completed with confidence: ${confidence}%`);
-      console.log("Raw OCR text:", text);
+      if (onProgress) {
+        onProgress({ status: "Running OCR analysis...", progress: 40 });
+      }
+
+      // Try multiple OCR approaches
+      const results = await Promise.all([
+        // Standard OCR
+        worker.recognize(preprocessedImage, {
+          rectangle: undefined,
+        }),
+        // OCR with different page segmentation
+        worker
+          .recognize(preprocessedImage, {
+            rectangle: undefined,
+          })
+          .then(async (result) => {
+            await worker.setParameters({
+              tessedit_pageseg_mode: Tesseract.PSM.SINGLE_COLUMN,
+            });
+            const columnResult = await worker.recognize(preprocessedImage);
+            await worker.setParameters({
+              tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+            });
+            return columnResult;
+          }),
+      ]);
+
+      if (onProgress) {
+        onProgress({ status: "Processing results...", progress: 80 });
+      }
+
+      // Combine and select best result
+      const bestResult = this.selectBestOCRResult(results);
+      const cleanedText = this.cleanOCRText(bestResult.data.text);
+
+      console.log(
+        `OCR completed with confidence: ${bestResult.data.confidence}%`,
+      );
+      console.log("Raw OCR text:", bestResult.data.text);
+      console.log("Cleaned OCR text:", cleanedText);
 
       if (onProgress) {
         onProgress({ status: "Text extraction complete", progress: 100 });
       }
 
-      return text;
+      return cleanedText;
     } catch (error) {
       console.error("OCR processing error:", error);
       throw new Error("Failed to process image");
     }
+  }
+
+  private async preprocessImage(imageFile: File): Promise<HTMLCanvasElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        reject(new Error("Could not get canvas context"));
+        return;
+      }
+
+      img.onload = () => {
+        // Set canvas size
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Draw original image
+        ctx.drawImage(img, 0, 0);
+
+        // Get image data for processing
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // Apply preprocessing filters
+        for (let i = 0; i < data.length; i += 4) {
+          // Convert to grayscale
+          const gray =
+            data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+
+          // Increase contrast and apply threshold
+          const contrast = 1.5;
+          const threshold = 140;
+          const enhanced = (gray - 128) * contrast + 128;
+          const final = enhanced > threshold ? 255 : 0;
+
+          data[i] = final; // R
+          data[i + 1] = final; // G
+          data[i + 2] = final; // B
+          // Alpha stays the same
+        }
+
+        // Put processed image back
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas);
+      };
+
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = URL.createObjectURL(imageFile);
+    });
+  }
+
+  private selectBestOCRResult(results: any[]): any {
+    // Select result with highest confidence and most meaningful text
+    return results.reduce((best, current) => {
+      const currentScore = this.scoreOCRResult(current.data);
+      const bestScore = this.scoreOCRResult(best.data);
+      return currentScore > bestScore ? current : best;
+    });
+  }
+
+  private scoreOCRResult(data: any): number {
+    const text = data.text || "";
+    const confidence = data.confidence || 0;
+
+    // Score based on confidence and text quality indicators
+    let score = confidence;
+
+    // Bonus for finding PrizePicks indicators
+    if (text.toLowerCase().includes("pick")) score += 10;
+    if (text.toLowerCase().includes("flex")) score += 10;
+    if (text.toLowerCase().includes("play")) score += 10;
+    if (text.match(/\$\d+/)) score += 10;
+
+    // Penalty for too much noise
+    const noiseChars = (text.match(/[^a-zA-Z0-9\s\$\.\-]/g) || []).length;
+    score -= noiseChars * 0.5;
+
+    return score;
+  }
+
+  private cleanOCRText(text: string): string {
+    return (
+      text
+        // Remove common OCR artifacts
+        .replace(/[|\\/_~]/g, " ")
+        // Fix common character misreads
+        .replace(/[0O](?=[a-z])/g, "o")
+        .replace(/[1Il](?=[a-z])/g, "l")
+        .replace(/[5S](?=[a-z])/g, "s")
+        // Clean up spacing
+        .replace(/\s+/g, " ")
+        .trim()
+    );
   }
 
   async terminate() {
