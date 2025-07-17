@@ -378,23 +378,7 @@ function BetHistoryCard({
                               size="sm"
                               variant="ghost"
                               className="h-5 px-2 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
-                              onClick={() => {
-                                const updatedLineup = {
-                                  ...bet.prizePickDetails!,
-                                  players: bet.prizePickDetails!.players.map(
-                                    (p, i) =>
-                                      i === index ? { ...p, isWin: true } : p,
-                                  ),
-                                };
-                                const updates = {
-                                  prizePickDetails: updatedLineup,
-                                };
-                                const updatedBets = betStorage.updateBet(
-                                  bet.id,
-                                  updates,
-                                );
-                                setBets(updatedBets);
-                              }}
+                              onClick={() => onUpdatePick(bet.id, index, true)}
                               title="Mark as Win"
                             >
                               W
@@ -403,23 +387,7 @@ function BetHistoryCard({
                               size="sm"
                               variant="ghost"
                               className="h-5 px-2 text-xs bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20"
-                              onClick={() => {
-                                const updatedLineup = {
-                                  ...bet.prizePickDetails!,
-                                  players: bet.prizePickDetails!.players.map(
-                                    (p, i) =>
-                                      i === index ? { ...p, isWin: false } : p,
-                                  ),
-                                };
-                                const updates = {
-                                  prizePickDetails: updatedLineup,
-                                };
-                                const updatedBets = betStorage.updateBet(
-                                  bet.id,
-                                  updates,
-                                );
-                                setBets(updatedBets);
-                              }}
+                              onClick={() => onUpdatePick(bet.id, index, false)}
                               title="Mark as Loss"
                             >
                               L
