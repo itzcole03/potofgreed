@@ -68,37 +68,24 @@ export class OCRProcessor {
       const preprocessedImage = await this.preprocessImage(imageFile);
 
       if (onProgress) {
-        onProgress({ status: "Running OCR analysis...", progress: 40 });
+        onProgress({
+          status: "Running multi-pass OCR analysis...",
+          progress: 30,
+        });
       }
 
-      // Try multiple OCR approaches
-      const results = await Promise.all([
-        // Standard OCR
-        worker.recognize(preprocessedImage, {
-          rectangle: undefined,
-        }),
-        // OCR with different page segmentation
-        worker
-          .recognize(preprocessedImage, {
-            rectangle: undefined,
-          })
-          .then(async (result) => {
-            await worker.setParameters({
-              tessedit_pageseg_mode: Tesseract.PSM.SINGLE_COLUMN,
-            });
-            const columnResult = await worker.recognize(preprocessedImage);
-            await worker.setParameters({
-              tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-            });
-            return columnResult;
-          }),
-      ]);
+      // Multi-pass OCR with different configurations
+      const results = await this.runMultiPassOCR(
+        worker,
+        preprocessedImage,
+        onProgress,
+      );
 
       if (onProgress) {
         onProgress({ status: "Processing results...", progress: 80 });
       }
 
-      // Combine and select best result
+      // Combine and select best result with confidence scoring
       const bestResult = this.selectBestOCRResult(results);
       const cleanedText = this.cleanOCRText(bestResult.data.text);
 
@@ -117,6 +104,97 @@ export class OCRProcessor {
       console.error("OCR processing error:", error);
       throw new Error("Failed to process image");
     }
+  }
+
+  // Multi-pass OCR with different configurations optimized for different content types
+  private async runMultiPassOCR(
+    worker: Tesseract.Worker,
+    image: HTMLCanvasElement,
+    onProgress?: (progress: OCRProgress) => void,
+  ): Promise<any[]> {
+    const results = [];
+
+    // Pass 1: Standard mobile UI optimized configuration
+    if (onProgress) {
+      onProgress({
+        status: "OCR Pass 1: Mobile UI optimization...",
+        progress: 35,
+      });
+    }
+
+    await worker.setParameters({
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+      tessedit_char_whitelist:
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .$-+@():",
+    });
+    results.push(await worker.recognize(image));
+
+    // Pass 2: Player names optimization (more lenient for names)
+    if (onProgress) {
+      onProgress({
+        status: "OCR Pass 2: Player name extraction...",
+        progress: 45,
+      });
+    }
+
+    await worker.setParameters({
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_COLUMN,
+      tessedit_char_whitelist:
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz .'",
+    });
+    results.push(await worker.recognize(image));
+
+    // Pass 3: Numbers and money amounts optimization
+    if (onProgress) {
+      onProgress({
+        status: "OCR Pass 3: Money and numbers extraction...",
+        progress: 55,
+      });
+    }
+
+    await worker.setParameters({
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+      tessedit_char_whitelist: "0123456789.$",
+    });
+    results.push(await worker.recognize(image));
+
+    // Pass 4: Sports abbreviations and stats
+    if (onProgress) {
+      onProgress({
+        status: "OCR Pass 4: Sports data extraction...",
+        progress: 65,
+      });
+    }
+
+    await worker.setParameters({
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+      tessedit_char_whitelist:
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 -+@():",
+    });
+    results.push(await worker.recognize(image));
+
+    // Pass 5: Raw text extraction (no character restrictions)
+    if (onProgress) {
+      onProgress({
+        status: "OCR Pass 5: Raw text extraction...",
+        progress: 75,
+      });
+    }
+
+    await worker.setParameters({
+      tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+      tessedit_char_whitelist: "",
+    });
+    results.push(await worker.recognize(image));
+
+    // Reset to default configuration
+    await worker.setParameters({
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+      tessedit_char_whitelist:
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .$-+@():",
+    });
+
+    return results;
   }
 
   private async preprocessImage(imageFile: File): Promise<HTMLCanvasElement> {
