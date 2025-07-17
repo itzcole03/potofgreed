@@ -14,6 +14,14 @@ export class OCRProcessor {
       this.worker = await Tesseract.createWorker("eng", 1, {
         logger: (m) => console.log("OCR:", m),
       });
+
+      // Configure OCR for better mobile screenshot recognition
+      await this.worker.setParameters({
+        tessedit_char_whitelist:
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .$-",
+        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+        preserve_interword_spaces: "1",
+      });
     }
     return this.worker;
   }
@@ -26,14 +34,18 @@ export class OCRProcessor {
       const worker = await this.initialize();
 
       if (onProgress) {
-        onProgress({ status: "Processing image...", progress: 0 });
+        onProgress({ status: "Processing image...", progress: 25 });
       }
 
+      // Enhanced recognition with better parameters for mobile screenshots
       const {
-        data: { text },
+        data: { text, confidence },
       } = await worker.recognize(imageFile, {
         rectangle: undefined,
       });
+
+      console.log(`OCR completed with confidence: ${confidence}%`);
+      console.log("Raw OCR text:", text);
 
       if (onProgress) {
         onProgress({ status: "Text extraction complete", progress: 100 });
