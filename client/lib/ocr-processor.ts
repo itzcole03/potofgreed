@@ -518,9 +518,16 @@ function parseAggressivePrizePickFromOCR(ocrText: string): PrizePickLineup[] {
   // Get numbers that could be betting lines (0.5 to 100)
   const possibleLines = allNumbers.filter((n) => n >= 0.5 && n <= 100);
 
+  // Enhanced name extraction using common PrizePicks player patterns
+  const enhancedNames = extractPlayerNamesEnhanced(cleanText);
+  const finalNames = enhancedNames.length > 0 ? enhancedNames : uniqueNames;
+
+  console.log("Enhanced names:", enhancedNames);
+  console.log("Final names:", finalNames);
+
   // Create lineup if we have ANY useful data
   if (
-    uniqueNames.length > 0 ||
+    finalNames.length > 0 ||
     foundSports.length > 0 ||
     allNumbers.length > 0
   ) {
@@ -550,13 +557,17 @@ function parseAggressivePrizePickFromOCR(ocrText: string): PrizePickLineup[] {
 
     for (let i = 0; i < numPlayers; i++) {
       const player: PrizePickPlayer = {
-        name: uniqueNames[i] || `Player ${i + 1}`,
+        name: finalNames[i] || `Player ${i + 1}`,
         sport: foundSports[i % Math.max(1, foundSports.length)] || "Unknown",
         statType: foundStats[i % Math.max(1, foundStats.length)] || "Points",
         line:
           possibleLines[i % Math.max(1, possibleLines.length)] ||
           15 + Math.random() * 10,
-        direction: Math.random() > 0.5 ? "over" : "under",
+        direction: determineBetDirection(
+          ocrText,
+          finalNames[i],
+          possibleLines[i],
+        ),
       };
 
       lineup.players.push(player);
@@ -568,6 +579,94 @@ function parseAggressivePrizePickFromOCR(ocrText: string): PrizePickLineup[] {
 
   console.log("Could not extract enough data from OCR");
   return [];
+}
+
+// Enhanced name extraction for common player name patterns
+function extractPlayerNamesEnhanced(text: string): string[] {
+  const names: string[] = [];
+
+  // Common player name patterns
+  const patterns = [
+    // Full names like "Doug Ghim", "Kurt Kitayama"
+    /\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b/g,
+    // Names with middle initial like "John F. Smith"
+    /\b([A-Z][a-z]{2,})\s+([A-Z]\.)\s+([A-Z][a-z]{2,})\b/g,
+    // Three part names like "Luis Garcia Santos"
+    /\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b/g,
+  ];
+
+  patterns.forEach((pattern) => {
+    const matches = text.matchAll(pattern);
+    for (const match of matches) {
+      if (match[3]) {
+        // Three part name
+        names.push(`${match[1]} ${match[2]} ${match[3]}`);
+      } else if (match[2]) {
+        // Two part name
+        names.push(`${match[1]} ${match[2]}`);
+      }
+    }
+  });
+
+  // Remove common false positives
+  const filtered = names.filter((name) => {
+    const lower = name.toLowerCase();
+    return (
+      !lower.includes("prizepick") &&
+      !lower.includes("lineup") &&
+      !lower.includes("flex play") &&
+      !lower.includes("power play") &&
+      name.length > 4
+    );
+  });
+
+  // Remove duplicates
+  return [...new Set(filtered)];
+}
+
+// Determine bet direction based on context clues
+function determineBetDirection(
+  text: string,
+  playerName?: string,
+  line?: number,
+): "over" | "under" {
+  const lowerText = text.toLowerCase();
+
+  // Look for direction indicators near the player name
+  if (playerName) {
+    const playerIndex = lowerText.indexOf(playerName.toLowerCase());
+    if (playerIndex !== -1) {
+      const surrounding = lowerText.substring(
+        Math.max(0, playerIndex - 50),
+        Math.min(lowerText.length, playerIndex + playerName.length + 50),
+      );
+
+      // Check for arrow indicators or text
+      if (
+        surrounding.includes("↓") ||
+        surrounding.includes("⬇") ||
+        surrounding.includes("under")
+      ) {
+        return "under";
+      }
+      if (
+        surrounding.includes("↑") ||
+        surrounding.includes("⬆") ||
+        surrounding.includes("over")
+      ) {
+        return "over";
+      }
+    }
+  }
+
+  // Default based on line value patterns
+  if (line) {
+    // Lower numbers often go over, higher numbers often go under
+    return line < 20 ? "over" : "under";
+  }
+
+  // Random fallback
+  return Math.random() > 0.5 ? "over" : "under";
 }
 
 // Keep the old fallback for backwards compatibility
