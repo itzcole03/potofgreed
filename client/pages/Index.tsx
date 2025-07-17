@@ -339,29 +339,9 @@ function BetHistoryCard({
                             size="sm"
                             variant="ghost"
                             className="h-5 w-5 p-0 opacity-60 hover:opacity-100"
-                            onClick={() => {
-                              const updatedLineup = {
-                                ...bet.prizePickDetails!,
-                                players: bet.prizePickDetails!.players.map(
-                                  (p, i) =>
-                                    i === index
-                                      ? {
-                                          ...p,
-                                          isWin: undefined,
-                                          actualValue: undefined,
-                                        }
-                                      : p,
-                                ),
-                              };
-                              const updates = {
-                                prizePickDetails: updatedLineup,
-                              };
-                              const updatedBets = betStorage.updateBet(
-                                bet.id,
-                                updates,
-                              );
-                              setBets(updatedBets);
-                            }}
+                            onClick={() =>
+                              onUpdatePick(bet.id, index, undefined)
+                            }
                             title="Reset to Pending"
                           >
                             <RotateCcw className="h-3 w-3" />
