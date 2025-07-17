@@ -414,42 +414,36 @@ function tryDirectPatternMatching(ocrText: string): PrizePickLineup | null {
 
   console.log(`Detected ${detectedLineup.type} format`);
 
-  // Enhanced money pattern detection
-  const moneyPatterns = [
-    // Common patterns from training data
-    /(\d+)[-\s]*pick\s*\$(\d+(?:\.\d+)?)\s*.*?\$(\d+(?:\.\d+)?)/i, // "3-Pick $30" ... "$15"
-    /\$(\d+(?:\.\d+)?)\s*.*?\$(\d+(?:\.\d+)?)/i, // "$30" ... "$15"
-    /(\d+)[-\s]*pick\s*\$(\d+(?:\.\d+)?)/i, // "3-Pick $30"
-  ];
+  // Enhanced money pattern detection - extract ALL dollar amounts
+  const allDollarAmounts = [];
+  const dollarRegex = /\$(\d+(?:\.\d+)?)/g;
+  let match;
+  while ((match = dollarRegex.exec(ocrText)) !== null) {
+    allDollarAmounts.push(parseFloat(match[1]));
+  }
+
+  console.log("Found dollar amounts:", allDollarAmounts);
 
   let entryAmount = 5; // default
   let potentialPayout = 25; // default
 
-  // Try to extract money amounts
-  for (const pattern of moneyPatterns) {
-    const match = ocrText.match(pattern);
-    if (match) {
-      if (match[3]) {
-        // Format: "3-Pick $30 ... $15"
-        entryAmount = parseFloat(match[2]);
-        potentialPayout = parseFloat(match[3]);
-      } else if (match[2]) {
-        // Format: "3-Pick $30" or "$30 ... $15"
-        if (pattern.source.includes("pick")) {
-          entryAmount = parseFloat(match[2]);
-          potentialPayout = getEstimatedPayout(
-            detectedLineup.type,
-            entryAmount,
-          );
-        } else {
-          const val1 = parseFloat(match[1]);
-          const val2 = parseFloat(match[2]);
-          // Usually entry > payout, but not always
-          entryAmount = Math.max(val1, val2);
-          potentialPayout = Math.min(val1, val2);
-        }
-      }
-      break;
+  // If we found exactly 2 amounts, use them (smaller = entry, larger = payout)
+  if (allDollarAmounts.length >= 2) {
+    const sorted = allDollarAmounts.sort((a, b) => a - b);
+    entryAmount = sorted[0]; // smaller amount = entry
+    potentialPayout = sorted[1]; // larger amount = payout
+    console.log("Using extracted amounts:", { entryAmount, potentialPayout });
+  } else if (allDollarAmounts.length === 1) {
+    // Only one amount found, estimate the other
+    const amount = allDollarAmounts[0];
+    if (amount < 50) {
+      // Likely entry amount
+      entryAmount = amount;
+      potentialPayout = getEstimatedPayout(detectedLineup.type, entryAmount);
+    } else {
+      // Likely payout amount
+      potentialPayout = amount;
+      entryAmount = 5; // default entry
     }
   }
 
