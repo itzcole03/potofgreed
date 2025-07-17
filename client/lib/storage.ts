@@ -1,5 +1,7 @@
 // Storage utility for persisting bet data to localStorage
 
+import type { PrizePickLineup } from "./prizepick-parser";
+
 export interface StoredBet {
   id: string;
   sport: string;
@@ -11,6 +13,8 @@ export interface StoredBet {
   date: string;
   createdAt: string;
   updatedAt: string;
+  // Optional detailed data for PrizePick lineups
+  prizePickDetails?: PrizePickLineup;
 }
 
 const STORAGE_KEY = "pot-of-greed-bets";
