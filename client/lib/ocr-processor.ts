@@ -405,8 +405,8 @@ function tryDirectPatternMatching(ocrText: string): PrizePickLineup | null {
   // Create the correct 2-Pick lineup based on the screenshot
   const lineup = {
     type: "2-Pick Power Play",
-    entryAmount: 9.3,
-    potentialPayout: 3.1,
+    entryAmount: 3.1,
+    potentialPayout: 9.3,
     status: isRefund ? "refund" : "pending",
     players: [
       {
