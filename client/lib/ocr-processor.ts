@@ -569,22 +569,33 @@ function extractReliableData(text: string) {
 
   // Extract money amounts with better patterns
   const moneyPatterns = [
-    /\$(\d+\.\d+).*?\$(\d+\.\d+)/i, // "$9.30" and "$3.10"
-    /\$(\d+).*?\$(\d+)/i,
-    /(\d+)[-\s]*pick.*\$(\d+\.\d+)/i, // "2-Pick $9.30"
+    /(\d+)[-\s]*pick\s*\$(\d+(?:\.\d+)?)\s*\$(\d+(?:\.\d+)?)/i, // "3-Pick $15 $2.50"
+    /\$(\d+(?:\.\d+)?)\s*.*?\$(\d+(?:\.\d+)?)/i, // "$15" and "$2.50"
+    /(\d+)[-\s]*pick.*\$(\d+(?:\.\d+)?)/i, // "3-Pick $15"
   ];
 
   for (const pattern of moneyPatterns) {
     const moneyMatch = text.match(pattern);
     if (moneyMatch) {
-      if (pattern.source.includes("pick.*\\$")) {
-        // Format: "2-Pick $9.30"
+      if (moneyMatch[3]) {
+        // Format: "3-Pick $15 $2.50" - entry is second, payout is third
         data.entryAmount = parseFloat(moneyMatch[2]);
-        data.potentialPayout = parseFloat(moneyMatch[2]) * 2; // Estimate payout
+        data.potentialPayout = parseFloat(moneyMatch[3]);
+      } else if (pattern.source.includes("pick.*\\$")) {
+        // Format: "3-Pick $15" - need to estimate payout
+        data.entryAmount = parseFloat(moneyMatch[2]);
+        data.potentialPayout = parseFloat(moneyMatch[2]) * 0.5; // Conservative estimate
       } else {
-        // Format: "$9.30" and "$3.10"
-        data.entryAmount = parseFloat(moneyMatch[1]);
-        data.potentialPayout = parseFloat(moneyMatch[2]);
+        // Format: "$15" and "$2.50" - assume larger is entry, smaller is payout
+        const val1 = parseFloat(moneyMatch[1]);
+        const val2 = parseFloat(moneyMatch[2]);
+        if (val1 > val2) {
+          data.entryAmount = val1;
+          data.potentialPayout = val2;
+        } else {
+          data.entryAmount = val2;
+          data.potentialPayout = val1;
+        }
       }
       data.hasValidContent = true;
       break;
