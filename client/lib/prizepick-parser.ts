@@ -157,6 +157,8 @@ export function parsePrizePickLineupsToBets(data: PrizePickData) {
       date: lineup.date
         ? formatPrizePickDate(lineup.date)
         : new Date().toISOString().split("T")[0],
+      // Store the full PrizePick lineup details for expanded view
+      prizePickDetails: lineup,
     };
   });
 }
