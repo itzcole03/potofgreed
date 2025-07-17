@@ -45,6 +45,13 @@ import {
   parseAdvancedPrizePickFromOCR,
 } from "@/lib/ocr-processor";
 import { betStorage, type StoredBet } from "@/lib/storage";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // Using StoredBet interface from storage.ts
 type Bet = StoredBet;
@@ -597,6 +604,24 @@ export default function Index() {
     const updates = { prizePickDetails: updatedLineup };
     const updatedBets = betStorage.updateBet(betId, updates);
     setBets(updatedBets);
+  };
+
+  const confirmCorrectedLineup = (correctedLineup: any) => {
+    const prizePickData: PrizePickData = { lineups: [correctedLineup] };
+    importPrizePickData(prizePickData);
+    setShowCorrectionModal(false);
+    setPendingLineup(null);
+    setProcessingStatus(`Successfully imported corrected lineup!`);
+
+    setTimeout(() => {
+      setProcessingStatus("");
+    }, 3000);
+  };
+
+  const cancelCorrection = () => {
+    setShowCorrectionModal(false);
+    setPendingLineup(null);
+    setProcessingStatus("");
   };
 
   const calculatePayout = (odds: string, stake: number) => {
