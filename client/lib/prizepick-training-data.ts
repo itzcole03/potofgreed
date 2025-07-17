@@ -38,6 +38,16 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
       "Breanna Stewart",
       "Aari McDonald",
       "Aliyah Boston",
+      "Napheesa Collier",
+      "Angel Reese",
+      "Courtney Williams",
+      "Sami Whitcomb",
+      "Alyssa Thomas",
+      "Kelsey Mitchell",
+      "Caitlin Clark",
+      "Tina Charles",
+      "Azura Stevens",
+      "Dearica Hamby",
     ],
     Tennis: [
       "Mariano Navone",
@@ -52,6 +62,11 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
       "Luis Carlos Alvarez Valdes",
       "Arthur Cazaux",
       "Jana Fett",
+      "Taro Daniel",
+      "Alibek Kachmazov",
+      "Filip Misolic",
+      "Caroline Werner",
+      "Nuria Brancaccio",
     ],
     PGA: [
       "Dustin Johnson",
@@ -59,6 +74,14 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
       "Darren Clarke",
       "Lee Westwood",
       "Bryson DeChambeau",
+    ],
+    MLB: ["Shohei Ohtani", "Aaron Judge", "Ronald Acuña Jr.", "Cal Raleigh"],
+    NBASLH: ["Bronny James", "Cam Christie", "Cole Swider"],
+    HRDERBY: ["Cal Raleigh", "Jazz Chisholm Jr."],
+    ALLSTAR: [
+      "L. Webb + B. Woo",
+      "M. Gore + A. Abbott",
+      "P. Skenes + T. Skubal",
     ],
   },
 
@@ -71,6 +94,7 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
       "Rebounds",
       "FG Attempted",
       "Pts+Asts",
+      "Pts+Rebs",
     ],
     Tennis: [
       "Fantasy Score",
@@ -80,6 +104,10 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
       "Double Faults",
       "Aces",
     ],
+    MLB: ["Hits", "Hitter Fantasy Score"],
+    NBASLH: ["Points"],
+    HRDERBY: ["Home Runs"],
+    ALLSTAR: ["Pitcher Strikeouts (Combo)", "Hitter Fantasy Score"],
     PGA: ["Strokes", "Birdies Or Better"],
   },
 
@@ -87,17 +115,24 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
   commonLines: {
     WNBA: [
       12.5, 16, 16.5, 9.5, 10.5, 19.5, 27.5, 5.5, 25.5, 11.5, 22, 17.5, 34, 20,
-      30, 23.5,
+      30, 23.5, 15.5, 6.5, 9.5, 21.5, 29.5, 33.5, 12.5,
     ],
-    Tennis: [20, 8, 5, 22.5, 6.5, 21.5, 2.5, 17, 1.5, 8.5, 9.5],
+    Tennis: [20, 8, 5, 22.5, 6.5, 21.5, 2.5, 17, 1.5, 8.5, 9.5, 15.5, 12.5],
     PGA: [71.5, 72.5, 1.5, 73, 70.5],
+    MLB: [0.5, 2.5],
+    NBASLH: [5.5, 8.5, 8],
+    HRDERBY: [20.5, 16.5],
+    ALLSTAR: [2.5, 2],
   },
 
   pickTypes: ["2-Pick", "3-Pick", "4-Pick", "6-Pick"],
   playTypes: ["Flex Play", "Power Play"],
 
   // Real entry amounts from screenshots
-  entryAmounts: [2, 4, 5, 6, 10, 15, 20, 21.88, 35, 40, 52.5, 157.5, 231.25],
+  entryAmounts: [
+    2, 4, 5, 6, 7.5, 10, 15, 20, 21.88, 22.5, 30, 35, 40, 52.5, 125, 157.5,
+    231.25,
+  ],
 
   // Venue formats by sport
   venues: {
@@ -113,6 +148,12 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
       "IND 77 vs NYL 98",
       "LVA 90 vs DAL 86",
       "MIN 79 @ PHX 66",
+      "MIN 91 vs CHI 78",
+      "CHI 78 @ MIN 91",
+      "PHX 78 vs GSV 77",
+      "GSV 77 @ PHX 78",
+      "WNBAAH",
+      "WNBASLH",
     ],
     Tennis: [
       "@ Marcelo Tomas Barrios Vera",
@@ -127,8 +168,17 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
       "@ Alex Hernandez",
       "@ Victoria Jimenez Kasintseva",
       "@ Sorana Cirstea",
+      "@ Alex Hernandez",
+      "@ Juan Pablo Ficovich",
+      "@ Elmer Moller",
+      "@ Valentina Steiner",
+      "@ Martina Trevisan",
     ],
     PGA: ["L.Glover @ Dunluce Links RD 1"],
+    MLB: ["NL 6 @ AL 6", "AL 6 vs NL 6"],
+    NBASLH: ["LAL @ LAC", "LAC vs LAL"],
+    HRDERBY: ["SEA @ HR Derby - 1st Round"],
+    ALLSTAR: ["NL 6 @ AL 6"],
   },
 
   // Payout multipliers based on pick type (from screenshots)
