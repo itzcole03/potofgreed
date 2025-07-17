@@ -931,6 +931,150 @@ function CorrectionInterface({
     setEditedLineup({ ...editedLineup, [field]: value });
   };
 
+  // Get stat types based on selected sport
+  const getStatTypesForSport = (sport: string): string[] => {
+    const statTypesBySport: Record<string, string[]> = {
+      WNBA: [
+        "Points",
+        "Rebounds",
+        "Assists",
+        "Pts+Rebs+Asts",
+        "Pts+Rebs",
+        "Pts+Asts",
+        "Rebs+Asts",
+        "Fantasy Score",
+        "FG Made",
+        "FG Attempted",
+        "3PT Made",
+        "FT Made",
+        "Steals",
+        "Blocks",
+        "Turnovers",
+      ],
+      NBA: [
+        "Points",
+        "Rebounds",
+        "Assists",
+        "Pts+Rebs+Asts",
+        "Pts+Rebs",
+        "Pts+Asts",
+        "Rebs+Asts",
+        "Fantasy Score",
+        "FG Made",
+        "FG Attempted",
+        "3PT Made",
+        "FT Made",
+        "Steals",
+        "Blocks",
+        "Turnovers",
+      ],
+      NBASLH: [
+        "Points",
+        "Rebounds",
+        "Assists",
+        "Pts+Rebs+Asts",
+        "Pts+Rebs",
+        "Pts+Asts",
+        "Rebs+Asts",
+        "Fantasy Score",
+        "FG Made",
+        "FG Attempted",
+        "3PT Made",
+        "FT Made",
+        "Steals",
+        "Blocks",
+        "Turnovers",
+      ],
+      MLB: [
+        "Hits",
+        "Home Runs",
+        "RBIs",
+        "Runs",
+        "Pitcher Strikeouts",
+        "Hitter Fantasy Score",
+        "Hits+Runs+RBIs",
+        "Stolen Bases",
+        "Walks",
+        "Saves",
+        "Innings Pitched",
+        "Total Bases",
+        "Doubles",
+        "Triples",
+      ],
+      Tennis: [
+        "Fantasy Score",
+        "Total Games",
+        "Total Games Won",
+        "Double Faults",
+        "Aces",
+        "Break Points Won",
+        "Service Games Won",
+        "Return Games Won",
+        "Sets Won",
+      ],
+      Golf: [
+        "Strokes",
+        "Birdies Or Better",
+        "Birdies",
+        "Eagles",
+        "Bogeys",
+        "Fairways Hit",
+        "Greens In Regulation",
+        "Putts",
+        "Driving Distance",
+      ],
+      Soccer: [
+        "Goals",
+        "Assists",
+        "Shots",
+        "Shots On Target",
+        "Passes Attempted",
+        "Passes Completed",
+        "Tackles",
+        "Saves",
+        "Corners",
+      ],
+      MMA: [
+        "Significant Strikes",
+        "Takedowns",
+        "Fight Time (Mins)",
+        "Fantasy Score",
+        "Total Strikes",
+        "Takedown Attempts",
+        "Submission Attempts",
+      ],
+      NFL: [
+        "Passing Yards",
+        "Rushing Yards",
+        "Receiving Yards",
+        "Touchdowns",
+        "Receptions",
+        "Completions",
+        "Fantasy Score",
+      ],
+      NHL: [
+        "Goals",
+        "Assists",
+        "Points",
+        "Shots On Goal",
+        "Saves",
+        "Fantasy Score",
+        "Penalty Minutes",
+        "Power Play Points",
+      ],
+    };
+
+    return (
+      statTypesBySport[sport] || [
+        "Points",
+        "Fantasy Score",
+        "Goals",
+        "Assists",
+        "Rebounds",
+      ]
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Lineup Header Info */}
@@ -1008,13 +1152,18 @@ function CorrectionInterface({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Golf">Golf</SelectItem>
-                  <SelectItem value="Tennis">Tennis</SelectItem>
+                  <SelectItem value="WNBA">WNBA</SelectItem>
                   <SelectItem value="NBA">NBA</SelectItem>
+                  <SelectItem value="NBASLH">NBA Summer League</SelectItem>
                   <SelectItem value="NFL">NFL</SelectItem>
                   <SelectItem value="NHL">NHL</SelectItem>
                   <SelectItem value="MLB">MLB</SelectItem>
+                  <SelectItem value="Tennis">Tennis</SelectItem>
+                  <SelectItem value="Golf">Golf</SelectItem>
                   <SelectItem value="Soccer">Soccer</SelectItem>
+                  <SelectItem value="MMA">MMA</SelectItem>
+                  <SelectItem value="HRDERBY">Home Run Derby</SelectItem>
+                  <SelectItem value="ALLSTAR">All-Star</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1033,13 +1182,11 @@ function CorrectionInterface({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Strokes">Strokes</SelectItem>
-                  <SelectItem value="Fantasy Score">Fantasy Score</SelectItem>
-                  <SelectItem value="Total Games">Total Games</SelectItem>
-                  <SelectItem value="Points">Points</SelectItem>
-                  <SelectItem value="Double Faults">Double Faults</SelectItem>
-                  <SelectItem value="Assists">Assists</SelectItem>
-                  <SelectItem value="Rebounds">Rebounds</SelectItem>
+                  {getStatTypesForSport(player.sport).map((statType) => (
+                    <SelectItem key={statType} value={statType}>
+                      {statType}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
