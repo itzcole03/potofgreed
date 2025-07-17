@@ -48,6 +48,14 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
       "Tina Charles",
       "Azura Stevens",
       "Dearica Hamby",
+      "Jackie Young",
+      "Sonia Citron",
+      "Rhyne Howard",
+      "Jacy Sheldon",
+      "Nneka Ogwumike",
+      "Aneesah Morrow",
+      "Olivia Nelson-Ododa",
+      "Kayla McBride",
     ],
     Tennis: [
       "Mariano Navone",
@@ -75,13 +83,47 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
       "Lee Westwood",
       "Bryson DeChambeau",
     ],
-    MLB: ["Shohei Ohtani", "Aaron Judge", "Ronald Acuña Jr.", "Cal Raleigh"],
-    NBASLH: ["Bronny James", "Cam Christie", "Cole Swider"],
+    MLB: [
+      "Shohei Ohtani",
+      "Aaron Judge",
+      "Ronald Acuña Jr.",
+      "Cal Raleigh",
+      "Jazz Chisholm Jr.",
+      "Bryan Woo",
+      "Paul Skenes",
+      "Jonathan Cannon",
+      "Kodai Senga",
+      "Corey Seager",
+    ],
+    NBASLH: [
+      "Bronny James",
+      "Cam Christie",
+      "Cole Swider",
+      "Chaz Lanier",
+      "Collin Murray-Boyles",
+      "Reed Sheppard",
+      "Yang Hansen",
+    ],
     HRDERBY: ["Cal Raleigh", "Jazz Chisholm Jr."],
     ALLSTAR: [
       "L. Webb + B. Woo",
       "M. Gore + A. Abbott",
       "P. Skenes + T. Skubal",
+    ],
+    Soccer: [
+      "Álvaro Fidalgo",
+      "Unai Bilbao",
+      "Kevin Castañeda",
+      "Moisés Mosquera",
+      "Guillermo Allison",
+    ],
+    MMA: [
+      "Chris Curtis",
+      "Stephen Thompson",
+      "Derrick Lewis",
+      "Tallison Teixeira",
+      "Gabriel Bonfim",
+      "Eduarda Moura",
     ],
   },
 
@@ -95,6 +137,9 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
       "FG Attempted",
       "Pts+Asts",
       "Pts+Rebs",
+      "FG Attempted",
+      "3 TT Made",
+      "Rebs+Asts",
     ],
     Tennis: [
       "Fantasy Score",
@@ -104,10 +149,23 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
       "Double Faults",
       "Aces",
     ],
-    MLB: ["Hits", "Hitter Fantasy Score"],
+    MLB: [
+      "Hits",
+      "Hitter Fantasy Score",
+      "Pitcher Strikeouts",
+      "Hits+Runs+RBIs",
+    ],
     NBASLH: ["Points"],
     HRDERBY: ["Home Runs"],
     ALLSTAR: ["Pitcher Strikeouts (Combo)", "Hitter Fantasy Score"],
+    Soccer: ["Passes Attempted", "Shots On Target", "Goalie Saves"],
+    MMA: [
+      "Significant Strikes",
+      "RD 1 Significant Strikes",
+      "Fight Time (Mins)",
+      "Takedowns",
+      "Fantasy Score",
+    ],
     PGA: ["Strokes", "Birdies Or Better"],
   },
 
@@ -115,23 +173,26 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
   commonLines: {
     WNBA: [
       12.5, 16, 16.5, 9.5, 10.5, 19.5, 27.5, 5.5, 25.5, 11.5, 22, 17.5, 34, 20,
-      30, 23.5, 15.5, 6.5, 9.5, 21.5, 29.5, 33.5, 12.5,
+      30, 23.5, 15.5, 6.5, 9.5, 21.5, 29.5, 33.5, 12.5, 3.5, 11.5, 10.5, 3.5,
+      36.5, 14.5, 13, 14, 0.5, 17.5, 6.5, 8.5, 24.5, 10, 6, 4, 7.5,
     ],
     Tennis: [20, 8, 5, 22.5, 6.5, 21.5, 2.5, 17, 1.5, 8.5, 9.5, 15.5, 12.5],
     PGA: [71.5, 72.5, 1.5, 73, 70.5],
-    MLB: [0.5, 2.5],
-    NBASLH: [5.5, 8.5, 8],
+    MLB: [0.5, 2.5, 5.5, 6.5, 5.5, 1.5, 4.5],
+    NBASLH: [5.5, 8.5, 8, 11.5, 12.5, 29.5, 11.5],
     HRDERBY: [20.5, 16.5],
     ALLSTAR: [2.5, 2],
+    Soccer: [62.5, 60.5, 0.5, 39.5, 3.5],
+    MMA: [69.5, 15.5, 17.5, 4.5, 2.5, 48.55],
   },
 
-  pickTypes: ["2-Pick", "3-Pick", "4-Pick", "6-Pick"],
+  pickTypes: ["2-Pick", "3-Pick", "4-Pick", "5-Pick", "6-Pick"],
   playTypes: ["Flex Play", "Power Play"],
 
   // Real entry amounts from screenshots
   entryAmounts: [
-    2, 4, 5, 6, 7.5, 10, 15, 20, 21.88, 22.5, 30, 35, 40, 52.5, 125, 157.5,
-    231.25,
+    2, 2.46, 2.5, 3.1, 4, 5, 6, 6.2, 7.5, 8.4, 9.3, 10, 14, 15, 20, 21.88, 22.5,
+    30, 35, 40, 49.2, 52.5, 67.2, 100, 125, 157.5, 200, 231.25,
   ],
 
   // Venue formats by sport
@@ -154,6 +215,22 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
       "GSV 77 @ PHX 78",
       "WNBAAH",
       "WNBASLH",
+      "WNBAIG",
+      "WAS 70 @ LVA 68",
+      "NYY 6 @ SEA 5",
+      "LVA 68 vs WAS 70",
+      "ATL 82 vs IND 99",
+      "IND 99 @ ATL 82",
+      "CON 65 vs SEA 79",
+      "SEA 79 @ CON 65",
+      "DET vs NYK",
+      "TOR vs CHI",
+      "HOU vs LAC",
+      "POR vs GSW",
+      "NYH 8 vs KC 3",
+      "TEX 7 vs HOU 3",
+      "PIT 1 vs MIN 2",
+      "CWS 5 @ CLE 4",
     ],
     Tennis: [
       "@ Marcelo Tomas Barrios Vera",
@@ -179,6 +256,15 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
     NBASLH: ["LAL @ LAC", "LAC vs LAL"],
     HRDERBY: ["SEA @ HR Derby - 1st Round"],
     ALLSTAR: ["NL 6 @ AL 6"],
+    Soccer: ["FC J1 @ CFA 1", "CTJ @ QRO"],
+    MMA: [
+      '"The Action Man" @ Max Griffin',
+      "Gabriel Bonfim @ Stephen Thompson",
+      "Tallison Teixeira @ Derrick Lewis",
+      "Tallison Teixeira @ Derrick Lewis",
+      "Gabriel Bonfim @ Stephen Thompson",
+      "Eduarda Moura @ Lauren Murphy",
+    ],
   },
 
   // Payout multipliers based on pick type (from screenshots)
@@ -186,8 +272,12 @@ export const PRIZEPICK_TRAINING_DATA: TrainingDataPattern = {
     "2-Pick": 4, // $5 → $20
     "3-Pick": 7, // $5 → $35, $2 → $14
     "4-Pick": 10.5, // $7.50 → $52.50, $6 → $9.75
+    "5-Pick": 20, // $10 → $200
     "6-Pick": 26.25, // $6 → $157.50, $10 → $231.25
   },
+
+  // Bet result statuses from screenshots
+  resultStatuses: ["Win", "Loss", "Self Refund", "pending"],
 };
 
 // Enhanced template creation using training data
