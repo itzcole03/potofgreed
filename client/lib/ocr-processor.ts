@@ -1399,84 +1399,49 @@ function generatePlayersFromTrainingData(
   return players;
 }
 
-// Parse actual players from OCR text instead of using hardcoded training data
+// Advanced player name extraction using NLP and validation
 function parseActualPlayersFromOCR(
   ocrText: string,
   playerCount: number,
 ): any[] {
-  console.log("Parsing actual players from OCR:", ocrText);
+  console.log("Starting advanced player parsing from OCR:", ocrText);
 
-  const players = [];
+  // Extract player names using multiple approaches
+  const extractedNames = extractPlayerNamesAdvanced(ocrText);
+  console.log("Extracted player names:", extractedNames);
 
-  // Extract player names (First Last format)
-  const namePattern = /\b([A-Z][a-z]+)\s+([A-Z][a-z]+)\b/g;
-  const names = [];
-  let nameMatch;
-  while ((nameMatch = namePattern.exec(ocrText)) !== null) {
-    const fullName = `${nameMatch[1]} ${nameMatch[2]}`;
-    // Filter out common false positives
-    if (
-      !fullName.includes("Power") &&
-      !fullName.includes("Pick") &&
-      !fullName.includes("Play")
-    ) {
-      names.push(fullName);
-    }
-  }
+  // Extract sports with context analysis
+  const extractedSports = extractSportsAdvanced(ocrText);
+  console.log("Extracted sports:", extractedSports);
 
-  console.log("Found player names:", names);
+  // Extract stat types with NLP
+  const extractedStats = extractStatTypesAdvanced(ocrText);
+  console.log("Extracted stat types:", extractedStats);
 
-  // Extract sports
-  const sports = [];
-  const sportPatterns = {
-    WNBA: /wnba/gi,
-    NBA: /nba/gi,
-    MLB: /mlb/gi,
-    NFL: /nfl/gi,
-    NHL: /nhl/gi,
-    Tennis: /tennis/gi,
-    Soccer: /soccer/gi,
-    MMA: /mma/gi,
-    Golf: /(golf|pga)/gi,
-  };
+  // Extract betting lines with validation
+  const extractedLines = extractBettingLinesAdvanced(ocrText);
+  console.log("Extracted betting lines:", extractedLines);
 
-  Object.entries(sportPatterns).forEach(([sport, pattern]) => {
-    if (pattern.test(ocrText)) {
-      sports.push(sport);
-    }
+  // Extract over/under directions
+  const extractedDirections = extractDirectionsAdvanced(ocrText);
+  console.log("Extracted directions:", extractedDirections);
+
+  // Extract opponent information
+  const extractedOpponents = extractOpponentsAdvanced(ocrText);
+  console.log("Extracted opponents:", extractedOpponents);
+
+  // Build players with intelligent matching
+  const players = buildPlayersFromExtractedData({
+    names: extractedNames,
+    sports: extractedSports,
+    statTypes: extractedStats,
+    lines: extractedLines,
+    directions: extractedDirections,
+    opponents: extractedOpponents,
+    playerCount,
   });
 
-  console.log("Found sports:", sports);
-
-  // Extract numbers that could be betting lines
-  const numberPattern = /\b(\d+(?:\.\d+)?)\b/g;
-  const numbers = [];
-  let numberMatch;
-  while ((numberMatch = numberPattern.exec(ocrText)) !== null) {
-    const num = parseFloat(numberMatch[1]);
-    // Filter for reasonable betting line ranges
-    if (num >= 0.5 && num <= 100) {
-      numbers.push(num);
-    }
-  }
-
-  console.log("Found potential betting lines:", numbers);
-
-  // Create players with extracted data
-  for (let i = 0; i < playerCount; i++) {
-    const player = {
-      name: names[i] || `Player ${i + 1}`,
-      sport: sports[i % Math.max(1, sports.length)] || "Unknown",
-      statType: "Points", // Default - will be corrected in UI
-      line: numbers[i] || 10,
-      direction: "over" as const,
-      opponent: "vs Opponent",
-      matchStatus: "Live",
-    };
-    players.push(player);
-  }
-
-  console.log("Generated players:", players);
+  console.log("Final constructed players:", players);
   return players;
 }
 
