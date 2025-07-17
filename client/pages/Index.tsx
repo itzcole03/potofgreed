@@ -324,21 +324,141 @@ function BetHistoryCard({
 
                     <div className="text-right ml-4">
                       {playerWon && (
-                        <div className="flex items-center gap-1 text-primary text-xs font-medium">
-                          <TrendingUp className="h-3 w-3" />
-                          Win
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 text-primary text-xs font-medium">
+                            <TrendingUp className="h-3 w-3" />
+                            Win
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-5 w-5 p-0 opacity-60 hover:opacity-100"
+                            onClick={() => {
+                              const updatedLineup = {
+                                ...bet.prizePickDetails!,
+                                players: bet.prizePickDetails!.players.map(
+                                  (p, i) =>
+                                    i === index
+                                      ? {
+                                          ...p,
+                                          isWin: undefined,
+                                          actualValue: undefined,
+                                        }
+                                      : p,
+                                ),
+                              };
+                              const updates = {
+                                prizePickDetails: updatedLineup,
+                              };
+                              const updatedBets = betStorage.updateBet(
+                                bet.id,
+                                updates,
+                              );
+                              setBets(updatedBets);
+                            }}
+                            title="Reset to Pending"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                          </Button>
                         </div>
                       )}
                       {playerLost && (
-                        <div className="flex items-center gap-1 text-destructive text-xs font-medium">
-                          <TrendingDown className="h-3 w-3" />
-                          Loss
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 text-destructive text-xs font-medium">
+                            <TrendingDown className="h-3 w-3" />
+                            Loss
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-5 w-5 p-0 opacity-60 hover:opacity-100"
+                            onClick={() => {
+                              const updatedLineup = {
+                                ...bet.prizePickDetails!,
+                                players: bet.prizePickDetails!.players.map(
+                                  (p, i) =>
+                                    i === index
+                                      ? {
+                                          ...p,
+                                          isWin: undefined,
+                                          actualValue: undefined,
+                                        }
+                                      : p,
+                                ),
+                              };
+                              const updates = {
+                                prizePickDetails: updatedLineup,
+                              };
+                              const updatedBets = betStorage.updateBet(
+                                bet.id,
+                                updates,
+                              );
+                              setBets(updatedBets);
+                            }}
+                            title="Reset to Pending"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                          </Button>
                         </div>
                       )}
                       {playerPending && (
-                        <div className="flex items-center gap-1 text-yellow-600 text-xs font-medium">
-                          <Target className="h-3 w-3" />
-                          Pending
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 text-yellow-600 text-xs font-medium">
+                            <Target className="h-3 w-3" />
+                            Pending
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-5 px-2 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
+                              onClick={() => {
+                                const updatedLineup = {
+                                  ...bet.prizePickDetails!,
+                                  players: bet.prizePickDetails!.players.map(
+                                    (p, i) =>
+                                      i === index ? { ...p, isWin: true } : p,
+                                  ),
+                                };
+                                const updates = {
+                                  prizePickDetails: updatedLineup,
+                                };
+                                const updatedBets = betStorage.updateBet(
+                                  bet.id,
+                                  updates,
+                                );
+                                setBets(updatedBets);
+                              }}
+                              title="Mark as Win"
+                            >
+                              W
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-5 px-2 text-xs bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20"
+                              onClick={() => {
+                                const updatedLineup = {
+                                  ...bet.prizePickDetails!,
+                                  players: bet.prizePickDetails!.players.map(
+                                    (p, i) =>
+                                      i === index ? { ...p, isWin: false } : p,
+                                  ),
+                                };
+                                const updates = {
+                                  prizePickDetails: updatedLineup,
+                                };
+                                const updatedBets = betStorage.updateBet(
+                                  bet.id,
+                                  updates,
+                                );
+                                setBets(updatedBets);
+                              }}
+                              title="Mark as Loss"
+                            >
+                              L
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
