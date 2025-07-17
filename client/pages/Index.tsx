@@ -60,7 +60,14 @@ interface BetHistoryCardProps {
   bet: Bet;
   onUpdateResult: (
     id: string,
-    result: "win" | "loss" | "pending",
+    result:
+      | "win"
+      | "loss"
+      | "pending"
+      | "refund"
+      | "push"
+      | "cancelled"
+      | "void",
     payout?: number,
   ) => void;
   onDelete: (id: string) => void;
@@ -640,7 +647,14 @@ export default function Index() {
 
   const updateBetResult = (
     id: string,
-    result: "win" | "loss" | "pending",
+    result:
+      | "win"
+      | "loss"
+      | "pending"
+      | "refund"
+      | "push"
+      | "cancelled"
+      | "void",
     payout?: number,
   ) => {
     const updates = {
