@@ -1018,7 +1018,15 @@ function CorrectionInterface({
 
   const updatePlayer = (index: number, field: string, value: any) => {
     const updatedPlayers = [...editedLineup.players];
-    updatedPlayers[index] = { ...updatedPlayers[index], [field]: value };
+    let updatedPlayer = { ...updatedPlayers[index], [field]: value };
+
+    // If sport is changing, reset stat type to first valid option for new sport
+    if (field === "sport") {
+      const validStatTypes = getStatTypesForSport(value);
+      updatedPlayer.statType = validStatTypes[0] || "Points";
+    }
+
+    updatedPlayers[index] = updatedPlayer;
     setEditedLineup({ ...editedLineup, players: updatedPlayers });
   };
 
