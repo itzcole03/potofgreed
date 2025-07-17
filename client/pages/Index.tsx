@@ -446,69 +446,8 @@ export default function Index() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Add New Bet */}
+          {/* Import PrizePicks */}
           <div className="space-y-6">
-            <Card className="border-border bg-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" />
-                  Add New Bet
-                </CardTitle>
-                <CardDescription>Record your latest sports bet</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Select
-                  value={newBet.sport}
-                  onValueChange={(value) =>
-                    setNewBet({ ...newBet, sport: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Sport" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NFL">NFL</SelectItem>
-                    <SelectItem value="NBA">NBA</SelectItem>
-                    <SelectItem value="NHL">NHL</SelectItem>
-                    <SelectItem value="MLB">MLB</SelectItem>
-                    <SelectItem value="Soccer">Soccer</SelectItem>
-                    <SelectItem value="Tennis">Tennis</SelectItem>
-                    <SelectItem value="Boxing">Boxing</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Input
-                  placeholder="Team/Player"
-                  value={newBet.team}
-                  onChange={(e) =>
-                    setNewBet({ ...newBet, team: e.target.value })
-                  }
-                />
-
-                <Input
-                  placeholder="Odds (e.g., -110, +150)"
-                  value={newBet.odds}
-                  onChange={(e) =>
-                    setNewBet({ ...newBet, odds: e.target.value })
-                  }
-                />
-
-                <Input
-                  type="number"
-                  placeholder="Stake Amount ($)"
-                  value={newBet.stake}
-                  onChange={(e) =>
-                    setNewBet({ ...newBet, stake: e.target.value })
-                  }
-                />
-
-                <Button onClick={addBet} className="w-full">
-                  Add Bet
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* PrizePick Import */}
             <Card className="border-border bg-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -567,6 +506,67 @@ export default function Index() {
                   className="w-full text-xs"
                 >
                   Or try sample data
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Add New Bet */}
+            <Card className="border-border bg-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5" />
+                  Add New Bet
+                </CardTitle>
+                <CardDescription>Record your latest sports bet</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Select
+                  value={newBet.sport}
+                  onValueChange={(value) =>
+                    setNewBet({ ...newBet, sport: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Sport" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NFL">NFL</SelectItem>
+                    <SelectItem value="NBA">NBA</SelectItem>
+                    <SelectItem value="NHL">NHL</SelectItem>
+                    <SelectItem value="MLB">MLB</SelectItem>
+                    <SelectItem value="Soccer">Soccer</SelectItem>
+                    <SelectItem value="Tennis">Tennis</SelectItem>
+                    <SelectItem value="Boxing">Boxing</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Input
+                  placeholder="Team/Player"
+                  value={newBet.team}
+                  onChange={(e) =>
+                    setNewBet({ ...newBet, team: e.target.value })
+                  }
+                />
+
+                <Input
+                  placeholder="Odds (e.g., -110, +150)"
+                  value={newBet.odds}
+                  onChange={(e) =>
+                    setNewBet({ ...newBet, odds: e.target.value })
+                  }
+                />
+
+                <Input
+                  type="number"
+                  placeholder="Stake Amount ($)"
+                  value={newBet.stake}
+                  onChange={(e) =>
+                    setNewBet({ ...newBet, stake: e.target.value })
+                  }
+                />
+
+                <Button onClick={addBet} className="w-full">
+                  Add Bet
                 </Button>
               </CardContent>
             </Card>
