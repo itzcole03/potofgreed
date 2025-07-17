@@ -201,7 +201,8 @@ export default function Index() {
         {/* Header */}
         <div className="text-center space-y-4">
           <h1 className="text-4xl md:text-6xl font-bold text-foreground">
-            Betting Tracker
+            Pot of Greed
+            <br />
           </h1>
           <p className="text-xl text-muted-foreground">
             Track your sports betting performance and maximize your edge
