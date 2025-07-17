@@ -732,14 +732,21 @@ export default function Index() {
                   </div>
                 )}
 
-                <Button
-                  onClick={importSamplePrizePickData}
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-xs"
-                >
-                  Or try sample data
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={importSamplePrizePickData}
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs"
+                  >
+                    Or try sample data
+                  </Button>
+
+                  <div className="text-xs text-center text-muted-foreground">
+                    💡 <strong>Pro tip:</strong> For best results, ensure
+                    screenshots are clear and well-lit
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
