@@ -108,34 +108,33 @@ export class OCRProcessor {
       }
 
       img.onload = () => {
-        // Set canvas size
-        canvas.width = img.width;
-        canvas.height = img.height;
+        // Set canvas size with DPI optimization
+        const scaleFactor = Math.max(1, 300 / 72); // Ensure at least 300 DPI equivalent
+        canvas.width = img.width * scaleFactor;
+        canvas.height = img.height * scaleFactor;
 
-        // Draw original image
-        ctx.drawImage(img, 0, 0);
+        // Draw original image with high-quality scaling
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // Get image data for processing
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
+        // Get image data for advanced processing
+        let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-        // Apply preprocessing filters
-        for (let i = 0; i < data.length; i += 4) {
-          // Convert to grayscale
-          const gray =
-            data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-
-          // Increase contrast and apply threshold
-          const contrast = 1.5;
-          const threshold = 140;
-          const enhanced = (gray - 128) * contrast + 128;
-          const final = enhanced > threshold ? 255 : 0;
-
-          data[i] = final; // R
-          data[i + 1] = final; // G
-          data[i + 2] = final; // B
-          // Alpha stays the same
-        }
+        // Apply comprehensive preprocessing pipeline
+        imageData = this.convertToGrayscale(imageData);
+        imageData = this.applyGaussianBlur(
+          imageData,
+          canvas.width,
+          canvas.height,
+        );
+        imageData = this.enhanceContrast(imageData);
+        imageData = this.applyAdaptiveThreshold(
+          imageData,
+          canvas.width,
+          canvas.height,
+        );
+        imageData = this.reduceNoise(imageData, canvas.width, canvas.height);
 
         // Put processed image back
         ctx.putImageData(imageData, 0, 0);
@@ -145,6 +144,222 @@ export class OCRProcessor {
       img.onerror = () => reject(new Error("Failed to load image"));
       img.src = URL.createObjectURL(imageFile);
     });
+  }
+
+  // Convert to grayscale using luminance formula
+  private convertToGrayscale(imageData: ImageData): ImageData {
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      // Use industry-standard luminance conversion
+      const gray = Math.round(
+        0.299 * data[i] + // Red
+          0.587 * data[i + 1] + // Green
+          0.114 * data[i + 2], // Blue
+      );
+      data[i] = gray; // R
+      data[i + 1] = gray; // G
+      data[i + 2] = gray; // B
+      // Alpha channel stays the same
+    }
+    return imageData;
+  }
+
+  // Apply Gaussian blur for noise reduction
+  private applyGaussianBlur(
+    imageData: ImageData,
+    width: number,
+    height: number,
+    radius: number = 1,
+  ): ImageData {
+    const data = imageData.data;
+    const output = new Uint8ClampedArray(data.length);
+
+    // Create Gaussian kernel
+    const kernel = this.createGaussianKernel(radius);
+    const kernelSize = kernel.length;
+    const offset = Math.floor(kernelSize / 2);
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        let r = 0,
+          g = 0,
+          b = 0,
+          weightSum = 0;
+
+        for (let ky = 0; ky < kernelSize; ky++) {
+          for (let kx = 0; kx < kernelSize; kx++) {
+            const px = Math.min(width - 1, Math.max(0, x + kx - offset));
+            const py = Math.min(height - 1, Math.max(0, y + ky - offset));
+            const pixelIndex = (py * width + px) * 4;
+            const weight = kernel[ky][kx];
+
+            r += data[pixelIndex] * weight;
+            g += data[pixelIndex + 1] * weight;
+            b += data[pixelIndex + 2] * weight;
+            weightSum += weight;
+          }
+        }
+
+        const outputIndex = (y * width + x) * 4;
+        output[outputIndex] = r / weightSum;
+        output[outputIndex + 1] = g / weightSum;
+        output[outputIndex + 2] = b / weightSum;
+        output[outputIndex + 3] = data[outputIndex + 3]; // Alpha
+      }
+    }
+
+    return new ImageData(output, width, height);
+  }
+
+  // Create Gaussian kernel for blurring
+  private createGaussianKernel(radius: number): number[][] {
+    const size = 2 * radius + 1;
+    const kernel: number[][] = [];
+    const sigma = radius / 3;
+    const twoSigmaSquare = 2 * sigma * sigma;
+    let sum = 0;
+
+    for (let y = 0; y < size; y++) {
+      kernel[y] = [];
+      for (let x = 0; x < size; x++) {
+        const distance = Math.pow(x - radius, 2) + Math.pow(y - radius, 2);
+        kernel[y][x] = Math.exp(-distance / twoSigmaSquare);
+        sum += kernel[y][x];
+      }
+    }
+
+    // Normalize kernel
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        kernel[y][x] /= sum;
+      }
+    }
+
+    return kernel;
+  }
+
+  // Enhance contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization)
+  private enhanceContrast(imageData: ImageData): ImageData {
+    const data = imageData.data;
+    const histogram = new Array(256).fill(0);
+
+    // Build histogram
+    for (let i = 0; i < data.length; i += 4) {
+      histogram[data[i]]++;
+    }
+
+    // Calculate cumulative distribution
+    const cdf = new Array(256);
+    cdf[0] = histogram[0];
+    for (let i = 1; i < 256; i++) {
+      cdf[i] = cdf[i - 1] + histogram[i];
+    }
+
+    // Normalize CDF
+    const totalPixels = data.length / 4;
+    const cdfMin = cdf.find((val) => val > 0) || 0;
+
+    // Apply histogram equalization with contrast limiting
+    for (let i = 0; i < data.length; i += 4) {
+      const oldValue = data[i];
+      const newValue = Math.round(
+        ((cdf[oldValue] - cdfMin) / (totalPixels - cdfMin)) * 255,
+      );
+
+      // Apply contrast limiting to prevent over-enhancement
+      const limitedValue = Math.min(255, Math.max(0, newValue));
+
+      data[i] = limitedValue; // R
+      data[i + 1] = limitedValue; // G
+      data[i + 2] = limitedValue; // B
+    }
+
+    return imageData;
+  }
+
+  // Apply adaptive threshold for better text extraction
+  private applyAdaptiveThreshold(
+    imageData: ImageData,
+    width: number,
+    height: number,
+  ): ImageData {
+    const data = imageData.data;
+    const blockSize = 16; // Size of neighborhood area
+    const C = 10; // Constant subtracted from mean
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        // Calculate local mean in neighborhood
+        let sum = 0;
+        let count = 0;
+
+        const startX = Math.max(0, x - blockSize / 2);
+        const endX = Math.min(width, x + blockSize / 2);
+        const startY = Math.max(0, y - blockSize / 2);
+        const endY = Math.min(height, y + blockSize / 2);
+
+        for (let ny = startY; ny < endY; ny++) {
+          for (let nx = startX; nx < endX; nx++) {
+            const idx = (ny * width + nx) * 4;
+            sum += data[idx];
+            count++;
+          }
+        }
+
+        const mean = sum / count;
+        const threshold = mean - C;
+
+        const pixelIndex = (y * width + x) * 4;
+        const pixelValue = data[pixelIndex];
+        const binaryValue = pixelValue > threshold ? 255 : 0;
+
+        data[pixelIndex] = binaryValue; // R
+        data[pixelIndex + 1] = binaryValue; // G
+        data[pixelIndex + 2] = binaryValue; // B
+      }
+    }
+
+    return imageData;
+  }
+
+  // Reduce noise using median filtering
+  private reduceNoise(
+    imageData: ImageData,
+    width: number,
+    height: number,
+  ): ImageData {
+    const data = imageData.data;
+    const output = new Uint8ClampedArray(data.length);
+    const windowSize = 3;
+    const offset = Math.floor(windowSize / 2);
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const values: number[] = [];
+
+        // Collect values in neighborhood
+        for (let wy = 0; wy < windowSize; wy++) {
+          for (let wx = 0; wx < windowSize; wx++) {
+            const px = Math.min(width - 1, Math.max(0, x + wx - offset));
+            const py = Math.min(height - 1, Math.max(0, y + wy - offset));
+            const pixelIndex = (py * width + px) * 4;
+            values.push(data[pixelIndex]);
+          }
+        }
+
+        // Find median value
+        values.sort((a, b) => a - b);
+        const median = values[Math.floor(values.length / 2)];
+
+        const outputIndex = (y * width + x) * 4;
+        output[outputIndex] = median;
+        output[outputIndex + 1] = median;
+        output[outputIndex + 2] = median;
+        output[outputIndex + 3] = data[outputIndex + 3]; // Alpha
+      }
+    }
+
+    return new ImageData(output, width, height);
   }
 
   private selectBestOCRResult(results: any[]): any {
