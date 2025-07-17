@@ -737,6 +737,87 @@ function generatePlayersFromTrainingData(
   return players;
 }
 
+// Parse actual players from OCR text instead of using hardcoded training data
+function parseActualPlayersFromOCR(
+  ocrText: string,
+  playerCount: number,
+): any[] {
+  console.log("Parsing actual players from OCR:", ocrText);
+
+  const players = [];
+
+  // Extract player names (First Last format)
+  const namePattern = /\b([A-Z][a-z]+)\s+([A-Z][a-z]+)\b/g;
+  const names = [];
+  let nameMatch;
+  while ((nameMatch = namePattern.exec(ocrText)) !== null) {
+    const fullName = `${nameMatch[1]} ${nameMatch[2]}`;
+    // Filter out common false positives
+    if (
+      !fullName.includes("Power") &&
+      !fullName.includes("Pick") &&
+      !fullName.includes("Play")
+    ) {
+      names.push(fullName);
+    }
+  }
+
+  console.log("Found player names:", names);
+
+  // Extract sports
+  const sports = [];
+  const sportPatterns = {
+    WNBA: /wnba/gi,
+    NBA: /nba/gi,
+    MLB: /mlb/gi,
+    NFL: /nfl/gi,
+    NHL: /nhl/gi,
+    Tennis: /tennis/gi,
+    Soccer: /soccer/gi,
+    MMA: /mma/gi,
+    Golf: /(golf|pga)/gi,
+  };
+
+  Object.entries(sportPatterns).forEach(([sport, pattern]) => {
+    if (pattern.test(ocrText)) {
+      sports.push(sport);
+    }
+  });
+
+  console.log("Found sports:", sports);
+
+  // Extract numbers that could be betting lines
+  const numberPattern = /\b(\d+(?:\.\d+)?)\b/g;
+  const numbers = [];
+  let numberMatch;
+  while ((numberMatch = numberPattern.exec(ocrText)) !== null) {
+    const num = parseFloat(numberMatch[1]);
+    // Filter for reasonable betting line ranges
+    if (num >= 0.5 && num <= 100) {
+      numbers.push(num);
+    }
+  }
+
+  console.log("Found potential betting lines:", numbers);
+
+  // Create players with extracted data
+  for (let i = 0; i < playerCount; i++) {
+    const player = {
+      name: names[i] || `Player ${i + 1}`,
+      sport: sports[i % Math.max(1, sports.length)] || "Unknown",
+      statType: "Points", // Default - will be corrected in UI
+      line: numbers[i] || 10,
+      direction: "over" as const,
+      opponent: "vs Opponent",
+      matchStatus: "Live",
+    };
+    players.push(player);
+  }
+
+  console.log("Generated players:", players);
+  return players;
+}
+
 // Generate realistic opponents based on sport
 function generateOpponent(sport: string): string {
   const opponents = {
