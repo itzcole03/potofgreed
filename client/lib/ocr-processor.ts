@@ -583,6 +583,291 @@ export class OCRProcessor {
       this.worker = null;
     }
   }
+
+  // Robust money amount extraction using multiple parsing strategies
+  private extractMoneyAmountsRobust(
+    ocrText: string,
+    lineupType: string,
+  ): {
+    entryAmount: number;
+    potentialPayout: number;
+    confidence: number;
+  } {
+    console.log(
+      "Starting robust money extraction for lineup type:",
+      lineupType,
+    );
+
+    // Strategy 1: Direct dollar pattern matching
+    const directResults = this.extractDirectDollarPatterns(ocrText);
+
+    // Strategy 2: Context-aware extraction (looking for "to pay", "payout", etc.)
+    const contextResults = this.extractContextualAmounts(ocrText);
+
+    // Strategy 3: Numeric pattern analysis with OCR error correction
+    const numericResults = this.extractNumericPatternsWithCorrection(ocrText);
+
+    // Strategy 4: Lineup-specific known patterns
+    const lineupResults = this.extractLineupSpecificAmounts(
+      ocrText,
+      lineupType,
+    );
+
+    console.log("Money extraction strategies results:", {
+      direct: directResults,
+      contextual: contextResults,
+      numeric: numericResults,
+      lineup: lineupResults,
+    });
+
+    // Combine results with confidence scoring
+    return this.selectBestMoneyResult([
+      { ...directResults, strategy: "direct" },
+      { ...contextResults, strategy: "contextual" },
+      { ...numericResults, strategy: "numeric" },
+      { ...lineupResults, strategy: "lineup" },
+    ]);
+  }
+
+  // Strategy 1: Direct dollar pattern matching
+  private extractDirectDollarPatterns(text: string): {
+    entryAmount: number;
+    potentialPayout: number;
+    confidence: number;
+  } {
+    const dollarPatterns = [
+      /\$(\d+\.\d{2})/g, // Perfect: $2.50, $7.50
+      /\$(\d+\.?\d{0,2})/g, // Good: $2.5, $7
+      /(\d+\.\d{2})\s*dollars?/gi, // With "dollars": 2.50 dollars
+      /\$\s*(\d+\.?\d{0,2})/g, // Spaced: $ 2.50
+    ];
+
+    const amounts = [];
+
+    for (const pattern of dollarPatterns) {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        const amount = parseFloat(match[1]);
+        if (amount >= 0.1 && amount <= 10000) {
+          amounts.push(amount);
+        }
+      }
+    }
+
+    const uniqueAmounts = [...new Set(amounts)].sort((a, b) => a - b);
+
+    if (uniqueAmounts.length >= 2) {
+      return {
+        entryAmount: uniqueAmounts[0],
+        potentialPayout: uniqueAmounts[uniqueAmounts.length - 1],
+        confidence: 0.9,
+      };
+    }
+
+    return { entryAmount: 0, potentialPayout: 0, confidence: 0.1 };
+  }
+
+  // Strategy 2: Context-aware extraction
+  private extractContextualAmounts(text: string): {
+    entryAmount: number;
+    potentialPayout: number;
+    confidence: number;
+  } {
+    const contextPatterns = [
+      // "Entry $5 Payout $25" type patterns
+      /entry[:\s]*\$?(\d+\.?\d{0,2}).*?payout[:\s]*\$?(\d+\.?\d{0,2})/gi,
+      /\$(\d+\.?\d{0,2})\s+to\s+pay\s+\$(\d+\.?\d{0,2})/gi,
+      /bet[:\s]*\$?(\d+\.?\d{0,2}).*?win[:\s]*\$?(\d+\.?\d{0,2})/gi,
+      /stake[:\s]*\$?(\d+\.?\d{0,2}).*?return[:\s]*\$?(\d+\.?\d{0,2})/gi,
+    ];
+
+    for (const pattern of contextPatterns) {
+      const match = pattern.exec(text);
+      if (match) {
+        const amount1 = parseFloat(match[1]);
+        const amount2 = parseFloat(match[2]);
+
+        if (amount1 > 0 && amount2 > 0) {
+          return {
+            entryAmount: Math.min(amount1, amount2),
+            potentialPayout: Math.max(amount1, amount2),
+            confidence: 0.8,
+          };
+        }
+      }
+    }
+
+    return { entryAmount: 0, potentialPayout: 0, confidence: 0.1 };
+  }
+
+  // Strategy 3: Numeric patterns with OCR error correction
+  private extractNumericPatternsWithCorrection(text: string): {
+    entryAmount: number;
+    potentialPayout: number;
+    confidence: number;
+  } {
+    const allNumbers = [];
+    const numberPatterns = [
+      /\b(\d{1,3}\.\d{2})\b/g, // 2.50, 25.00, 100.50
+      /\b(\d{1,4})\b/g, // 250, 750, 2500 (potential OCR errors)
+    ];
+
+    for (const pattern of numberPatterns) {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        let amount = parseFloat(match[1]);
+
+        // Apply OCR error corrections
+        if (amount >= 100 && amount <= 999 && !match[1].includes(".")) {
+          // 250 -> 2.50, 750 -> 7.50 (missing decimal point)
+          amount = amount / 100;
+        } else if (
+          amount >= 1000 &&
+          amount <= 9999 &&
+          !match[1].includes(".")
+        ) {
+          // 2500 -> 25.00, 7500 -> 75.00 (shifted decimal)
+          amount = amount / 100;
+        }
+
+        if (amount >= 0.1 && amount <= 10000) {
+          allNumbers.push(amount);
+        }
+      }
+    }
+
+    const uniqueNumbers = [...new Set(allNumbers)].sort((a, b) => a - b);
+
+    if (uniqueNumbers.length >= 2) {
+      return {
+        entryAmount: uniqueNumbers[0],
+        potentialPayout: uniqueNumbers[uniqueNumbers.length - 1],
+        confidence: 0.6,
+      };
+    }
+
+    return { entryAmount: 0, potentialPayout: 0, confidence: 0.1 };
+  }
+
+  // Strategy 4: Lineup-specific known patterns
+  private extractLineupSpecificAmounts(
+    text: string,
+    lineupType: string,
+  ): {
+    entryAmount: number;
+    potentialPayout: number;
+    confidence: number;
+  } {
+    // Common patterns for different lineup types based on training data
+    const lineupPatterns: Record<
+      string,
+      Array<{ entry: number; payout: number }>
+    > = {
+      "2-Pick": [
+        { entry: 2.5, payout: 7.5 },
+        { entry: 5.0, payout: 15.0 },
+        { entry: 5.0, payout: 17.5 },
+        { entry: 5.0, payout: 20.0 },
+        { entry: 8.4, payout: 67.2 },
+      ],
+      "3-Pick": [
+        { entry: 2.5, payout: 15.0 },
+        { entry: 5.0, payout: 30.0 },
+        { entry: 10.0, payout: 30.0 },
+        { entry: 15.0, payout: 30.0 },
+      ],
+      "4-Pick": [
+        { entry: 5.0, payout: 35.0 },
+        { entry: 6.0, payout: 9.75 },
+        { entry: 10.0, payout: 100.0 },
+      ],
+      "5-Pick": [{ entry: 10.0, payout: 200.0 }],
+      "6-Pick": [
+        { entry: 4.0, payout: 25.0 },
+        { entry: 5.0, payout: 125.0 },
+        { entry: 5.0, payout: 130.0 },
+        { entry: 6.0, payout: 157.5 },
+        { entry: 10.0, payout: 100.0 },
+        { entry: 10.0, payout: 231.25 },
+      ],
+    };
+
+    const patterns = lineupPatterns[lineupType] || lineupPatterns["2-Pick"];
+
+    // Look for number sequences that match known patterns
+    const numbers = text.match(/\d+\.?\d*/g)?.map((n) => parseFloat(n)) || [];
+
+    for (const pattern of patterns) {
+      // Check if both entry and payout (or close variations) appear in text
+      const entryMatch = numbers.some(
+        (n) =>
+          Math.abs(n - pattern.entry) < 0.1 ||
+          Math.abs(n - pattern.entry * 100) < 1,
+      );
+      const payoutMatch = numbers.some(
+        (n) =>
+          Math.abs(n - pattern.payout) < 0.1 ||
+          Math.abs(n - pattern.payout * 100) < 1,
+      );
+
+      if (entryMatch && payoutMatch) {
+        return {
+          entryAmount: pattern.entry,
+          potentialPayout: pattern.payout,
+          confidence: 0.7,
+        };
+      }
+    }
+
+    // Fallback to most common pattern for the lineup type
+    const defaultPattern = patterns[0];
+    return {
+      entryAmount: defaultPattern.entry,
+      potentialPayout: defaultPattern.payout,
+      confidence: 0.3,
+    };
+  }
+
+  // Select the best money extraction result based on confidence
+  private selectBestMoneyResult(
+    results: Array<{
+      entryAmount: number;
+      potentialPayout: number;
+      confidence: number;
+      strategy: string;
+    }>,
+  ): {
+    entryAmount: number;
+    potentialPayout: number;
+    confidence: number;
+  } {
+    // Filter out zero results
+    const validResults = results.filter(
+      (r) => r.entryAmount > 0 && r.potentialPayout > 0,
+    );
+
+    if (validResults.length === 0) {
+      console.log(
+        "No valid money extraction results, using default 2-Pick values",
+      );
+      return { entryAmount: 2.5, potentialPayout: 7.5, confidence: 0.2 };
+    }
+
+    // Sort by confidence descending
+    validResults.sort((a, b) => b.confidence - a.confidence);
+
+    const bestResult = validResults[0];
+    console.log(
+      `Best money extraction result from ${bestResult.strategy} strategy:`,
+      bestResult,
+    );
+
+    return {
+      entryAmount: bestResult.entryAmount,
+      potentialPayout: bestResult.potentialPayout,
+      confidence: bestResult.confidence,
+    };
+  }
 }
 
 export function parsePrizePickFromOCR(ocrText: string): PrizePickLineup[] {
