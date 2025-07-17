@@ -414,37 +414,25 @@ function tryDirectPatternMatching(ocrText: string): PrizePickLineup | null {
 
   console.log(`Detected ${detectedLineup.type} format`);
 
-  // Enhanced money pattern detection - extract ALL dollar amounts
+  // Enhanced money pattern detection
+  const moneyRegex = /\$(\d+(?:\.\d+)?)/g;
   const allDollarAmounts = [];
-  const dollarRegex = /\$(\d+(?:\.\d+)?)/g;
   let match;
-  while ((match = dollarRegex.exec(ocrText)) !== null) {
+  while ((match = moneyRegex.exec(ocrText)) !== null) {
     allDollarAmounts.push(parseFloat(match[1]));
   }
 
   console.log("Found dollar amounts:", allDollarAmounts);
 
-  let entryAmount = 5; // default
-  let potentialPayout = 25; // default
+  let entryAmount = 2.5; // default
+  let potentialPayout = 7.5; // default
 
   // If we found exactly 2 amounts, use them (smaller = entry, larger = payout)
   if (allDollarAmounts.length >= 2) {
     const sorted = allDollarAmounts.sort((a, b) => a - b);
     entryAmount = sorted[0]; // smaller amount = entry
-    potentialPayout = sorted[1]; // larger amount = payout
+    potentialPayout = sorted[sorted.length - 1]; // larger amount = payout
     console.log("Using extracted amounts:", { entryAmount, potentialPayout });
-  } else if (allDollarAmounts.length === 1) {
-    // Only one amount found, estimate the other
-    const amount = allDollarAmounts[0];
-    if (amount < 50) {
-      // Likely entry amount
-      entryAmount = amount;
-      potentialPayout = getEstimatedPayout(detectedLineup.type, entryAmount);
-    } else {
-      // Likely payout amount
-      potentialPayout = amount;
-      entryAmount = 5; // default entry
-    }
   }
 
   // Detect play type (Power Play vs Flex Play)
