@@ -169,113 +169,196 @@ export function parseAdvancedPrizePickFromOCR(
 ): PrizePickLineup[] {
   console.log("Advanced parsing OCR text:", ocrText);
 
-  // Always try main parser first - it's now much more flexible
-  let lineups = parsePrizePickFromOCR(ocrText);
+  // Always use the aggressive fallback parser for real OCR
+  // Real OCR is too messy for structured parsing
+  const lineups = parseAggressivePrizePickFromOCR(ocrText);
 
-  // If main parser doesn't find anything, try fallback
-  if (lineups.length === 0) {
-    console.log("Main parser found nothing, trying fallback...");
-    lineups = parseFallbackPrizePickFromOCR(ocrText);
-  }
-
+  console.log("Parsed lineups:", lineups);
   return lineups;
 }
 
-// Fallback parser for when OCR doesn't clearly detect PrizePick structure
-function parseFallbackPrizePickFromOCR(ocrText: string): PrizePickLineup[] {
-  console.log("Fallback parser processing:", ocrText);
+// Aggressive parser for messy OCR text
+function parseAggressivePrizePickFromOCR(ocrText: string): PrizePickLineup[] {
+  console.log("Aggressive parser processing:", ocrText);
 
-  // Be much more aggressive in finding any useful data
-  const text = ocrText.toLowerCase();
+  // Clean up the text
+  const cleanText = ocrText
+    .replace(/[^a-zA-Z0-9\s\$\.\-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const text = cleanText.toLowerCase();
 
-  // Look for ANY indication this might be PrizePicks
-  const prizePickIndicators = [
-    "prizepicks",
-    "pick",
-    "flex",
-    "power",
-    "lineup",
-    "pay",
-    "paid",
-    "tennis",
-    "golf",
-    "nfl",
-    "nba",
-    "pga",
-    "strokes",
-    "fantasy",
-  ];
+  console.log("Cleaned text:", cleanText);
 
-  const hasIndicator = prizePickIndicators.some((indicator) =>
-    text.includes(indicator),
-  );
+  // Very loose indicators - if it's a screenshot, assume it's PrizePicks
+  const hasAnyText = text.length > 10;
 
-  if (!hasIndicator) {
-    console.log("No PrizePick indicators found");
+  if (!hasAnyText) {
+    console.log("Not enough text found");
     return [];
   }
 
-  // Extract any numbers
-  const numbers =
-    ocrText.match(/\d+(?:\.\d+)?/g)?.map((n) => parseFloat(n)) || [];
-  const smallNumbers = numbers.filter((n) => n >= 1 && n <= 100); // Possible entry amounts
-  const largeNumbers = numbers.filter((n) => n > 100); // Possible payouts
-  const lineNumbers = numbers.filter((n) => n >= 0.5 && n <= 50); // Possible betting lines
+  // Extract ALL numbers
+  const allNumbers =
+    cleanText.match(/\d+(?:\.\d+)?/g)?.map((n) => parseFloat(n)) || [];
+  console.log("Found numbers:", allNumbers);
 
-  // Extract words that could be player names
-  const words = ocrText.match(/[A-Za-z]+/g) || [];
-  const capitalWords = ocrText.match(/[A-Z][a-z]+/g) || [];
+  // Extract ALL words
+  const allWords = cleanText.match(/[A-Za-z]+/g) || [];
+  console.log("Found words:", allWords);
 
-  // Look for name patterns
-  const possibleNames: string[] = [];
-  for (let i = 0; i < capitalWords.length - 1; i++) {
-    const firstName = capitalWords[i];
-    const lastName = capitalWords[i + 1];
-    if (firstName.length > 2 && lastName.length > 2) {
-      possibleNames.push(`${firstName} ${lastName}`);
+  // Look for money patterns more aggressively
+  let entryAmount = 5;
+  let potentialPayout = 50;
+  let isPaid = false;
+
+  // Find entry/payout amounts
+  for (let i = 0; i < allNumbers.length - 1; i++) {
+    const first = allNumbers[i];
+    const second = allNumbers[i + 1];
+
+    // Look for reasonable entry/payout combinations
+    if (first >= 1 && first <= 100 && second > first && second <= 10000) {
+      entryAmount = first;
+      potentialPayout = second;
+      break;
     }
   }
 
-  // Extract sports
-  const sports = ["Tennis", "Golf", "NFL", "NBA", "NHL", "PGA", "Soccer"];
-  const foundSports = sports.filter(
-    (sport) =>
-      text.includes(sport.toLowerCase()) || text.includes(sport.toUpperCase()),
-  );
+  // Check if it's a winning ticket
+  isPaid =
+    text.includes("paid") || text.includes("won") || text.includes("win");
 
-  // If we have at least some data, create a lineup
+  // Extract potential names from consecutive capitalized words
+  const words = cleanText.split(" ");
+  const possibleNames: string[] = [];
+
+  for (let i = 0; i < words.length - 1; i++) {
+    const word1 = words[i];
+    const word2 = words[i + 1];
+
+    // Look for patterns like "FirstName LastName"
+    if (/^[A-Z][a-z]{2,}$/.test(word1) && /^[A-Z][a-z]{2,}$/.test(word2)) {
+      possibleNames.push(`${word1} ${word2}`);
+    }
+
+    // Also try common name patterns
+    if (/^[A-Z][a-z]+$/.test(word1) && word1.length > 2) {
+      for (let j = i + 1; j < Math.min(i + 3, words.length); j++) {
+        const nextWord = words[j];
+        if (/^[A-Z][a-z]+$/.test(nextWord) && nextWord.length > 2) {
+          possibleNames.push(`${word1} ${nextWord}`);
+          break;
+        }
+      }
+    }
+  }
+
+  // Remove duplicates
+  const uniqueNames = [...new Set(possibleNames)];
+  console.log("Found possible names:", uniqueNames);
+
+  // Extract sports
+  const sportsMapping = {
+    tennis: "Tennis",
+    golf: "Golf",
+    pga: "Golf",
+    nfl: "NFL",
+    nba: "NBA",
+    nhl: "NHL",
+    mlb: "MLB",
+    soccer: "Soccer",
+    football: "NFL",
+  };
+
+  const foundSports: string[] = [];
+  Object.entries(sportsMapping).forEach(([key, value]) => {
+    if (text.includes(key)) {
+      foundSports.push(value);
+    }
+  });
+
+  console.log("Found sports:", foundSports);
+
+  // Extract stat types
+  const statMapping = {
+    strokes: "Strokes",
+    fantasy: "Fantasy Score",
+    score: "Fantasy Score",
+    double: "Double Faults",
+    faults: "Double Faults",
+    total: "Total Games",
+    games: "Total Games",
+    points: "Points",
+    assists: "Assists",
+    rebounds: "Rebounds",
+  };
+
+  const foundStats: string[] = [];
+  Object.entries(statMapping).forEach(([key, value]) => {
+    if (text.includes(key) && !foundStats.includes(value)) {
+      foundStats.push(value);
+    }
+  });
+
+  console.log("Found stats:", foundStats);
+
+  // Get numbers that could be betting lines (0.5 to 100)
+  const possibleLines = allNumbers.filter((n) => n >= 0.5 && n <= 100);
+
+  // Create lineup if we have ANY useful data
   if (
-    possibleNames.length > 0 ||
+    uniqueNames.length > 0 ||
     foundSports.length > 0 ||
-    numbers.length > 0
+    allNumbers.length > 0
   ) {
+    // Determine number of picks
+    let pickCount = 3;
+    const pickMatch = text.match(/(\d+)\s*pick/);
+    if (pickMatch) {
+      pickCount = parseInt(pickMatch[1]);
+    } else if (uniqueNames.length > 0) {
+      pickCount = Math.min(6, Math.max(3, uniqueNames.length));
+    }
+
     const lineup: PrizePickLineup = {
-      type: "PrizePick Lineup (OCR)",
-      entryAmount: smallNumbers[0] || 5,
-      potentialPayout: largeNumbers[0] || smallNumbers[0] * 20 || 100,
-      status: text.includes("paid") ? "win" : "pending",
+      type: `${pickCount}-Pick Flex Play (OCR)`,
+      entryAmount,
+      potentialPayout,
+      actualPayout: isPaid ? potentialPayout : undefined,
+      status: isPaid ? "win" : "pending",
       players: [],
     };
 
     // Create players
     const numPlayers = Math.max(
       1,
-      Math.min(6, possibleNames.length, foundSports.length || 3),
+      Math.min(pickCount, uniqueNames.length || 3),
     );
 
     for (let i = 0; i < numPlayers; i++) {
-      lineup.players.push({
-        name: possibleNames[i] || `Player ${i + 1}`,
-        sport: foundSports[i % foundSports.length] || "Unknown",
-        statType: "Points",
-        line: lineNumbers[i % lineNumbers.length] || 10 + Math.random() * 15,
+      const player: PrizePickPlayer = {
+        name: uniqueNames[i] || `Player ${i + 1}`,
+        sport: foundSports[i % Math.max(1, foundSports.length)] || "Unknown",
+        statType: foundStats[i % Math.max(1, foundStats.length)] || "Points",
+        line:
+          possibleLines[i % Math.max(1, possibleLines.length)] ||
+          15 + Math.random() * 10,
         direction: Math.random() > 0.5 ? "over" : "under",
-      });
+      };
+
+      lineup.players.push(player);
     }
 
-    console.log("Fallback created lineup:", lineup);
+    console.log("Created lineup from OCR:", lineup);
     return [lineup];
   }
 
+  console.log("Could not extract enough data from OCR");
   return [];
+}
+
+// Keep the old fallback for backwards compatibility
+function parseFallbackPrizePickFromOCR(ocrText: string): PrizePickLineup[] {
+  return parseAggressivePrizePickFromOCR(ocrText);
 }
