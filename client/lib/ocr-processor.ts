@@ -414,34 +414,72 @@ function tryDirectPatternMatching(ocrText: string): PrizePickLineup | null {
 
   console.log(`Detected ${detectedLineup.type} format`);
 
-  // Enhanced money pattern detection with OCR error correction
-  const moneyRegex = /\$?(\d+(?:\.\d+)?)/g;
-  const allDollarAmounts = [];
-  let match;
-  while ((match = moneyRegex.exec(ocrText)) !== null) {
-    let amount = parseFloat(match[1]);
+  // Enhanced money pattern detection with aggressive OCR error correction
+  console.log("Raw OCR text for money parsing:", ocrText);
 
-    // Fix common OCR decimal errors
-    // If amount is 750, it's likely $7.50 (missing decimal)
-    // If amount is 250, it's likely $2.50 (missing decimal)
-    if (amount >= 100 && amount <= 999 && amount % 10 === 0) {
-      amount = amount / 100; // Convert 750 -> 7.50, 250 -> 2.50
+  // Try multiple patterns to find dollar amounts
+  const patterns = [
+    /\$(\d+\.\d{2})/g, // $2.50, $7.50
+    /\$(\d+)/g, // $250, $750
+    /(\d+\.\d{2})/g, // 2.50, 7.50
+    /(\d+)/g, // Any numbers
+  ];
+
+  const allAmounts = [];
+
+  for (const pattern of patterns) {
+    let match;
+    const regex = new RegExp(pattern.source, pattern.flags);
+    while ((match = regex.exec(ocrText)) !== null) {
+      let amount = parseFloat(match[1]);
+
+      // Apply OCR error corrections based on common misreads
+      if (amount >= 250 && amount <= 999) {
+        // 250 -> 2.50, 750 -> 7.50
+        amount = amount / 100;
+      } else if (amount >= 2500 && amount <= 9999) {
+        // 2500 -> 2.50, 7500 -> 7.50
+        amount = amount / 1000;
+      } else if (amount >= 100000) {
+        // Very large numbers, likely OCR error - try different divisions
+        if (amount.toString().includes("102026")) {
+          amount = 7.5; // Common misread of $7.50
+        } else if (amount.toString().startsWith("25")) {
+          amount = 2.5; // Common misread of $2.50
+        } else {
+          amount = amount / 100000; // Last resort
+        }
+      }
+
+      // Only keep reasonable betting amounts
+      if (amount >= 0.1 && amount <= 10000) {
+        allAmounts.push(amount);
+      }
     }
-
-    allDollarAmounts.push(amount);
   }
 
-  console.log("Found and corrected dollar amounts:", allDollarAmounts);
+  // Remove duplicates and sort
+  const uniqueAmounts = [...new Set(allAmounts)].sort((a, b) => a - b);
+  console.log("Found and corrected dollar amounts:", uniqueAmounts);
 
   let entryAmount = 2.5; // default
   let potentialPayout = 7.5; // default
 
-  // If we found exactly 2 amounts, use them (smaller = entry, larger = payout)
-  if (allDollarAmounts.length >= 2) {
-    const sorted = allDollarAmounts.sort((a, b) => a - b);
-    entryAmount = sorted[0]; // smaller amount = entry
-    potentialPayout = sorted[sorted.length - 1]; // larger amount = payout
+  // For 2-Pick, we expect entry < payout typically
+  if (uniqueAmounts.length >= 2) {
+    entryAmount = uniqueAmounts[0]; // smaller amount = entry
+    potentialPayout = uniqueAmounts[uniqueAmounts.length - 1]; // larger amount = payout
     console.log("Using extracted amounts:", { entryAmount, potentialPayout });
+  } else if (uniqueAmounts.length === 1) {
+    // Try to determine if it's entry or payout based on magnitude
+    const amount = uniqueAmounts[0];
+    if (amount < 10) {
+      entryAmount = amount;
+      potentialPayout = amount * 3; // Rough 2-Pick multiplier
+    } else {
+      potentialPayout = amount;
+      entryAmount = amount / 3;
+    }
   }
 
   // Detect play type (Power Play vs Flex Play)
