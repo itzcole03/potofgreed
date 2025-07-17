@@ -85,19 +85,27 @@ function BetHistoryCard({
   const isWin = bet.result === "win";
   const isLoss = bet.result === "loss";
   const isPending = bet.result === "pending";
+  const isRefund =
+    bet.result === "refund" ||
+    bet.result === "push" ||
+    bet.result === "void" ||
+    bet.result === "cancelled";
 
   const profit = isWin && bet.payout ? bet.payout - bet.stake : 0;
   const loss = isLoss ? bet.stake : 0;
+  const refunded = isRefund ? bet.stake : 0;
 
   const getStatusColor = () => {
     if (isWin) return "text-primary bg-primary/10";
     if (isLoss) return "text-destructive bg-destructive/10";
+    if (isRefund) return "text-blue-600 bg-blue-600/10";
     return "text-yellow-600 bg-yellow-600/10";
   };
 
   const getStatusIcon = () => {
     if (isWin) return <TrendingUp className="h-3 w-3" />;
     if (isLoss) return <TrendingDown className="h-3 w-3" />;
+    if (isRefund) return <RotateCcw className="h-3 w-3" />;
     return <Target className="h-3 w-3" />;
   };
 
@@ -211,6 +219,16 @@ function BetHistoryCard({
                   <TrendingDown className="h-3 w-3 mr-1" />
                   Loss
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-3 text-xs border-blue-600/20 text-blue-600 hover:bg-blue-600/10 transition-colors"
+                  onClick={() => onUpdateResult(bet.id, "refund", bet.stake)}
+                  title="Mark as Refund"
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Refund
+                </Button>
               </div>
             )}
 
@@ -253,6 +271,34 @@ function BetHistoryCard({
                   </Button>
                 </div>
                 <div className="text-xs text-muted-foreground">Lost stake</div>
+              </div>
+            )}
+
+            {isRefund && (
+              <div className="text-right">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="text-blue-600 font-bold text-lg">
+                    ${refunded.toFixed(2)}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0 opacity-60 hover:opacity-100 transition-opacity"
+                    onClick={() => onUpdateResult(bet.id, "pending")}
+                    title="Revert to Pending"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {bet.result === "refund"
+                    ? "Refunded"
+                    : bet.result === "push"
+                      ? "Push"
+                      : bet.result === "void"
+                        ? "Voided"
+                        : "Cancelled"}
+                </div>
               </div>
             )}
 
@@ -494,11 +540,14 @@ export default function Index() {
     .filter((bet) => bet.result === "loss")
     .reduce((sum, bet) => sum + bet.stake, 0);
   const netProfit = totalWon - totalLost;
+  const completedBets = bets.filter(
+    (bet) => bet.result === "win" || bet.result === "loss",
+  );
   const winRate =
-    bets.filter((bet) => bet.result !== "pending").length > 0
+    completedBets.length > 0
       ? (
           (bets.filter((bet) => bet.result === "win").length /
-            bets.filter((bet) => bet.result !== "pending").length) *
+            completedBets.length) *
           100
         ).toFixed(1)
       : 0;
