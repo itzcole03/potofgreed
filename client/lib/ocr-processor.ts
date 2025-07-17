@@ -169,12 +169,212 @@ export function parseAdvancedPrizePickFromOCR(
 ): PrizePickLineup[] {
   console.log("Advanced parsing OCR text:", ocrText);
 
-  // Always use the aggressive fallback parser for real OCR
-  // Real OCR is too messy for structured parsing
-  const lineups = parseAggressivePrizePickFromOCR(ocrText);
+  // Try structured parsing first, then fall back to aggressive
+  const structuredLineups = parseStructuredPrizePickFromOCR(ocrText);
+  if (structuredLineups.length > 0) {
+    console.log("Structured parsing successful:", structuredLineups);
+    return structuredLineups;
+  }
 
-  console.log("Parsed lineups:", lineups);
+  // Fall back to aggressive parsing
+  const lineups = parseAggressivePrizePickFromOCR(ocrText);
+  console.log("Fallback parsing result:", lineups);
   return lineups;
+}
+
+// Structured parser for mobile PrizePicks interface
+function parseStructuredPrizePickFromOCR(ocrText: string): PrizePickLineup[] {
+  console.log("Structured parsing OCR text:", ocrText);
+
+  const lines = ocrText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  console.log("OCR Lines:", lines);
+
+  // Parse header information
+  const headerInfo = parseLineupHeader(lines);
+  if (!headerInfo) {
+    console.log("Could not parse lineup header");
+    return [];
+  }
+
+  console.log("Header info:", headerInfo);
+
+  // Parse player sections
+  const players = parsePlayerSections(lines);
+  console.log("Parsed players:", players);
+
+  if (players.length === 0) {
+    console.log("No players found");
+    return [];
+  }
+
+  const lineup: PrizePickLineup = {
+    type: headerInfo.type,
+    entryAmount: headerInfo.entryAmount,
+    potentialPayout: headerInfo.potentialPayout,
+    status: "pending",
+    players,
+  };
+
+  return [lineup];
+}
+
+// Parse the header section to get lineup type and money info
+function parseLineupHeader(lines: string[]) {
+  let pickCount = 3;
+  let type = "Flex Play";
+  let entryAmount = 5;
+  let potentialPayout = 25;
+
+  for (const line of lines) {
+    // Look for "6-Pick Flex Play" pattern
+    const pickMatch = line.match(/(\d+)[-\s]*Pick\s+(Flex|Power)\s+Play/i);
+    if (pickMatch) {
+      pickCount = parseInt(pickMatch[1]);
+      type = `${pickCount}-Pick ${pickMatch[2]} Play`;
+      console.log("Found pick type:", type);
+      continue;
+    }
+
+    // Look for "$5 to pay $120" pattern
+    const moneyMatch = line.match(/\$(\d+)\s+to\s+pay\s+\$(\d+)/i);
+    if (moneyMatch) {
+      entryAmount = parseInt(moneyMatch[1]);
+      potentialPayout = parseInt(moneyMatch[2]);
+      console.log("Found money:", { entryAmount, potentialPayout });
+      continue;
+    }
+  }
+
+  return { type, entryAmount, potentialPayout };
+}
+
+// Parse individual player sections
+function parsePlayerSections(lines: string[]): PrizePickPlayer[] {
+  const players: PrizePickPlayer[] = [];
+  const sportContexts: string[] = [];
+  let currentSport = "Unknown";
+  let currentOpponent = "";
+  let currentStatus = "now";
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Detect sport context lines (PGA, TENNIS, etc.)
+    const sportMatch = line.match(
+      /^(PGA|TENNIS|NBA|NFL|NHL|MLB|SOCCER)\s+(.*?)(?:\s+(now|Final|\d+:\d+))?$/i,
+    );
+    if (sportMatch) {
+      currentSport =
+        sportMatch[1].toUpperCase() === "PGA"
+          ? "Golf"
+          : sportMatch[1].charAt(0).toUpperCase() +
+            sportMatch[1].slice(1).toLowerCase();
+      currentOpponent = sportMatch[2] || "";
+      currentStatus = sportMatch[3] || "now";
+      console.log("Found sport context:", {
+        currentSport,
+        currentOpponent,
+        currentStatus,
+      });
+      continue;
+    }
+
+    // Look for player names (usually capitalized)
+    const nameMatch = line.match(
+      /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s*([A-Z])?\s*$/i,
+    );
+    if (nameMatch) {
+      const playerName = nameMatch[1];
+
+      // Look ahead for stat information
+      const statInfo = findPlayerStatInfo(lines, i + 1);
+      if (statInfo) {
+        const player: PrizePickPlayer = {
+          name: playerName,
+          sport: currentSport,
+          statType: statInfo.statType,
+          line: statInfo.line,
+          direction: statInfo.direction,
+          opponent: currentOpponent,
+          matchStatus: currentStatus,
+        };
+
+        players.push(player);
+        console.log("Added player:", player);
+      }
+    }
+  }
+
+  return players;
+}
+
+// Find stat information for a player by looking at subsequent lines
+function findPlayerStatInfo(
+  lines: string[],
+  startIndex: number,
+): {
+  statType: string;
+  line: number;
+  direction: "over" | "under";
+} | null {
+  // Look at next few lines for stat patterns
+  for (let i = startIndex; i < Math.min(startIndex + 3, lines.length); i++) {
+    const line = lines[i];
+
+    // Look for patterns like "↑ 68 Strokes", "↓ 69.5 Strokes", "↑ 16.5 Fantasy Score"
+    const statMatch = line.match(
+      /[↑↓⬆⬇]?\s*(\d+(?:\.\d+)?)\s*(Strokes|Fantasy\s+Score|Total\s+Games|Double\s+Faults|Points|Assists|Rebounds)/i,
+    );
+    if (statMatch) {
+      const line_value = parseFloat(statMatch[1]);
+      const statType = statMatch[2];
+
+      // Determine direction from arrow or common patterns
+      const direction =
+        line.includes("↓") || line.includes("⬇") || line.includes("under")
+          ? "under"
+          : "over";
+
+      return {
+        statType: statType
+          .split(" ")
+          .map(
+            (word) =>
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+          )
+          .join(" "),
+        line: line_value,
+        direction,
+      };
+    }
+
+    // Alternative pattern: look for number patterns without arrows
+    const numberMatch = line.match(/(\d+(?:\.\d+)?)/);
+    if (numberMatch) {
+      const line_value = parseFloat(numberMatch[1]);
+
+      // Look for stat type in context
+      const contextLine = lines[i + 1] || lines[i - 1] || "";
+      let statType = "Points";
+
+      if (contextLine.match(/strokes?/i)) statType = "Strokes";
+      else if (contextLine.match(/fantasy|score/i)) statType = "Fantasy Score";
+      else if (contextLine.match(/total.*games?/i)) statType = "Total Games";
+      else if (contextLine.match(/double.*faults?/i))
+        statType = "Double Faults";
+
+      return {
+        statType,
+        line: line_value,
+        direction: Math.random() > 0.5 ? "over" : "under", // Default random when unclear
+      };
+    }
+  }
+
+  return null;
 }
 
 // Aggressive parser for messy OCR text
