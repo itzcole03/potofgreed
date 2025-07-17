@@ -286,14 +286,17 @@ function BetHistoryCard({
 
       {/* Expanded PrizePick Details */}
       {isExpanded && hasPrizePickDetails && (
-        <div className="border-t border-border/30 bg-muted/20">
-          <div className="p-4 space-y-3">
+        <div className="border-t border-border/30 bg-gradient-to-b from-muted/20 to-muted/10">
+          <div className="p-4 space-y-4">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium text-sm text-foreground">
+              <h4 className="font-semibold text-base text-foreground flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-primary" />
                 Lineup Details
               </h4>
-              <div className="text-xs text-muted-foreground">
-                {bet.prizePickDetails.players.length} picks
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                  {bet.prizePickDetails.players.length} picks
+                </span>
               </div>
             </div>
 
@@ -306,46 +309,75 @@ function BetHistoryCard({
                 return (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border/40 bg-card/30"
+                    className="flex items-center justify-between p-4 rounded-xl border border-border/40 bg-gradient-to-r from-card/50 to-card/30 hover:border-border transition-all duration-200"
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm text-foreground">
-                          {player.name}
-                        </span>
-                        <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
-                          {player.sport}
-                        </span>
+                    <div className="flex items-center gap-3 flex-1">
+                      {/* Player Avatar/Initial */}
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                        {player.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .substring(0, 2)}
                       </div>
 
-                      <div className="text-xs text-muted-foreground mb-1">
-                        {player.opponent && `${player.opponent} • `}
-                        {player.matchStatus}
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-foreground">
-                          {player.statType} {player.direction} {player.line}
-                        </span>
-                        {player.actualValue !== undefined && (
-                          <span className="text-xs text-muted-foreground">
-                            (actual: {player.actualValue})
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-sm text-foreground">
+                            {player.name}
                           </span>
-                        )}
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                            {player.sport}
+                          </span>
+                        </div>
+
+                        <div className="text-xs text-muted-foreground mb-2">
+                          {player.opponent && `${player.opponent} • `}
+                          <span
+                            className={`font-medium ${player.matchStatus === "Final" ? "text-primary" : "text-yellow-600"}`}
+                          >
+                            {player.matchStatus}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1 text-sm">
+                            <span className="text-foreground font-medium">
+                              {player.statType}
+                            </span>
+                            <span
+                              className={`px-2 py-1 rounded-lg text-xs font-bold ${
+                                player.direction === "over"
+                                  ? "bg-green-500/10 text-green-600"
+                                  : "bg-red-500/10 text-red-600"
+                              }`}
+                            >
+                              {player.direction.toUpperCase()}
+                            </span>
+                            <span className="text-foreground font-bold text-lg">
+                              {player.line}
+                            </span>
+                          </div>
+                          {player.actualValue !== undefined && (
+                            <span className="text-xs px-2 py-1 rounded bg-muted/50 text-muted-foreground">
+                              actual: {player.actualValue}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="text-right ml-4">
+                    <div className="flex flex-col items-end gap-2">
                       {playerWon && (
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 text-primary text-xs font-medium">
-                            <TrendingUp className="h-3 w-3" />
-                            Win
+                          <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-bold">
+                            <Check className="h-3 w-3" />
+                            HIT
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-5 w-5 p-0 opacity-60 hover:opacity-100"
+                            className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
                             onClick={() =>
                               onUpdatePick(bet.id, index, undefined)
                             }
@@ -357,14 +389,14 @@ function BetHistoryCard({
                       )}
                       {playerLost && (
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 text-destructive text-xs font-medium">
-                            <TrendingDown className="h-3 w-3" />
-                            Loss
+                          <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-destructive/15 text-destructive text-xs font-bold">
+                            <X className="h-3 w-3" />
+                            MISS
                           </div>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-5 w-5 p-0 opacity-60 hover:opacity-100"
+                            className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
                             onClick={() =>
                               onUpdatePick(bet.id, index, undefined)
                             }
@@ -376,28 +408,28 @@ function BetHistoryCard({
                       )}
                       {playerPending && (
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 text-yellow-600 text-xs font-medium">
+                          <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-yellow-500/15 text-yellow-600 text-xs font-bold">
                             <Target className="h-3 w-3" />
-                            Pending
+                            LIVE
                           </div>
                           <div className="flex gap-1">
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-5 px-2 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
+                              className="h-6 px-3 text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-full font-bold"
                               onClick={() => onUpdatePick(bet.id, index, true)}
                               title="Mark as Win"
                             >
-                              W
+                              ✓
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-5 px-2 text-xs bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20"
+                              className="h-6 px-3 text-xs bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 rounded-full font-bold"
                               onClick={() => onUpdatePick(bet.id, index, false)}
                               title="Mark as Loss"
                             >
-                              L
+                              ✗
                             </Button>
                           </div>
                         </div>
