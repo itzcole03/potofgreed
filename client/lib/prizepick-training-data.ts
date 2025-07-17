@@ -394,10 +394,21 @@ export function createRealisticTemplate(
   const hasTennis = /tennis/gi.test(ocrText);
   const hasPGA = /pga|golf/gi.test(ocrText);
 
-  // Detect pick type from OCR
-  const pickMatch = lowerText.match(/(\d+)[-\s]*pick/);
-  const pickCount =
-    detectedPickCount || (pickMatch ? parseInt(pickMatch[1]) : 4);
+  // Detect pick type from OCR with better patterns
+  const pickPatterns = [
+    /(\d+)[-\s]*pick.*\$(\d+\.\d+)/i, // "2-Pick $9.30"
+    /(\d+)[-\s]*pick\s+(flex|power)/i,
+    /(\d+)[-\s]*pick/i,
+  ];
+
+  let pickCount = detectedPickCount || 3; // Default to 3 instead of 4
+  for (const pattern of pickPatterns) {
+    const pickMatch = lowerText.match(pattern);
+    if (pickMatch) {
+      pickCount = parseInt(pickMatch[1]);
+      break;
+    }
+  }
   const pickType =
     PRIZEPICK_TRAINING_DATA.pickTypes.find((p) =>
       p.startsWith(pickCount.toString()),
