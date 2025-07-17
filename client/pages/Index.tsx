@@ -29,6 +29,8 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   samplePrizePickData,
@@ -107,6 +109,7 @@ function BetHistoryCard({
   };
 
   const { title, details } = parseTeamDetails(bet.team);
+  const hasPrizePickDetails = isPrizePick && bet.prizePickDetails;
 
   return (
     <div className="group border border-border/50 rounded-xl bg-gradient-to-r from-card to-card/50 hover:border-border transition-all duration-200 hover:shadow-md">
@@ -208,6 +211,22 @@ function BetHistoryCard({
               </div>
             )}
 
+            {hasPrizePickDetails && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 w-8 p-0 opacity-70 group-hover:opacity-100 transition-opacity"
+                onClick={() => setIsExpanded(!isExpanded)}
+                title={isExpanded ? "Hide details" : "Show details"}
+              >
+                {isExpanded ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+
             <Button
               size="sm"
               variant="ghost"
@@ -219,6 +238,102 @@ function BetHistoryCard({
           </div>
         </div>
       </div>
+
+      {/* Expanded PrizePick Details */}
+      {isExpanded && hasPrizePickDetails && (
+        <div className="border-t border-border/30 bg-muted/20">
+          <div className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-sm text-foreground">
+                Lineup Details
+              </h4>
+              <div className="text-xs text-muted-foreground">
+                {bet.prizePickDetails.players.length} picks
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {bet.prizePickDetails.players.map((player, index) => {
+                const playerWon = player.isWin;
+                const playerLost = player.isWin === false;
+                const playerPending = player.isWin === undefined;
+
+                return (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border/40 bg-card/30"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-sm text-foreground">
+                          {player.name}
+                        </span>
+                        <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
+                          {player.sport}
+                        </span>
+                      </div>
+
+                      <div className="text-xs text-muted-foreground mb-1">
+                        {player.opponent && `${player.opponent} • `}
+                        {player.matchStatus}
+                      </div>
+
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-foreground">
+                          {player.statType} {player.direction} {player.line}
+                        </span>
+                        {player.actualValue !== undefined && (
+                          <span className="text-xs text-muted-foreground">
+                            (actual: {player.actualValue})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-right ml-4">
+                      {playerWon && (
+                        <div className="flex items-center gap-1 text-primary text-xs font-medium">
+                          <TrendingUp className="h-3 w-3" />
+                          Win
+                        </div>
+                      )}
+                      {playerLost && (
+                        <div className="flex items-center gap-1 text-destructive text-xs font-medium">
+                          <TrendingDown className="h-3 w-3" />
+                          Loss
+                        </div>
+                      )}
+                      {playerPending && (
+                        <div className="flex items-center gap-1 text-yellow-600 text-xs font-medium">
+                          <Target className="h-3 w-3" />
+                          Pending
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 border-t border-border/30">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">Potential Payout:</span>
+                <span className="font-medium text-foreground">
+                  ${bet.prizePickDetails.potentialPayout.toFixed(2)}
+                </span>
+              </div>
+              {bet.prizePickDetails.actualPayout && (
+                <div className="flex justify-between items-center text-sm mt-1">
+                  <span className="text-muted-foreground">Actual Payout:</span>
+                  <span className="font-medium text-primary">
+                    ${bet.prizePickDetails.actualPayout.toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
