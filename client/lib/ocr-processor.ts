@@ -2464,6 +2464,373 @@ function estimatePayoutFromTraining(
   return entryAmount * (multipliers[pickCount] || 5);
 }
 
+// Advanced player name extraction with NLP techniques
+function extractPlayerNamesAdvanced(
+  text: string,
+): Array<{ name: string; confidence: number }> {
+  const names: Array<{ name: string; confidence: number }> = [];
+
+  // Pattern 1: Standard "First Last" names
+  const standardPattern = /\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b/g;
+  let match;
+  while ((match = standardPattern.exec(text)) !== null) {
+    const fullName = `${match[1]} ${match[2]}`;
+    if (isValidPlayerName(fullName)) {
+      names.push({ name: fullName, confidence: 0.8 });
+    }
+  }
+
+  // Pattern 2: Names with middle initials "First M. Last"
+  const middleInitialPattern =
+    /\b([A-Z][a-z]{2,})\s+([A-Z]\.)\s+([A-Z][a-z]{2,})\b/g;
+  while ((match = middleInitialPattern.exec(text)) !== null) {
+    const fullName = `${match[1]} ${match[3]}`;
+    if (isValidPlayerName(fullName)) {
+      names.push({ name: fullName, confidence: 0.9 });
+    }
+  }
+
+  // Pattern 3: Three-part names "First Middle Last"
+  const threePartPattern =
+    /\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\b/g;
+  while ((match = threePartPattern.exec(text)) !== null) {
+    const fullName = `${match[1]} ${match[3]}`; // Use first and last
+    if (isValidPlayerName(fullName)) {
+      names.push({ name: fullName, confidence: 0.7 });
+    }
+  }
+
+  // Pattern 4: Names with Jr./Sr./III etc.
+  const suffixPattern =
+    /\b([A-Z][a-z]{2,})\s+([A-Z][a-z]{2,})\s+(Jr\.?|Sr\.?|III?|IV)\b/g;
+  while ((match = suffixPattern.exec(text)) !== null) {
+    const fullName = `${match[1]} ${match[2]} ${match[3]}`;
+    if (isValidPlayerName(fullName)) {
+      names.push({ name: fullName, confidence: 0.9 });
+    }
+  }
+
+  // Remove duplicates and sort by confidence
+  const uniqueNames = names
+    .filter(
+      (item, index, arr) =>
+        arr.findIndex((x) => x.name === item.name) === index,
+    )
+    .sort((a, b) => b.confidence - a.confidence);
+
+  return uniqueNames;
+}
+
+// Validate if a string looks like a real player name
+function isValidPlayerName(name: string): boolean {
+  // Filter out common false positives
+  const invalidNames = [
+    "Power Play",
+    "Flex Play",
+    "Pick",
+    "PrizePicks",
+    "Total Games",
+    "Fantasy Score",
+    "Double Faults",
+    "Home Runs",
+    "Field Goals",
+    "Touch Downs",
+    "Base Hits",
+    "Final Score",
+    "Game Time",
+    "Live Score",
+    "Win Loss",
+    "Over Under",
+  ];
+
+  const nameLower = name.toLowerCase();
+
+  // Check against invalid names
+  if (
+    invalidNames.some((invalid) => nameLower.includes(invalid.toLowerCase()))
+  ) {
+    return false;
+  }
+
+  // Must be at least 4 characters
+  if (name.length < 4) return false;
+
+  // Must have at least one space (first + last name)
+  if (!name.includes(" ")) return false;
+
+  // Must start with capital letter
+  if (!/^[A-Z]/.test(name)) return false;
+
+  // Must not contain numbers or special characters
+  if (/[0-9@#$%^&*(),.?":{}|<>]/.test(name)) return false;
+
+  // Additional validation: check if it matches common name patterns
+  const parts = name.split(" ");
+  if (parts.length < 2) return false;
+
+  // Each part should be at least 2 characters and start with capital
+  return parts.every((part) => part.length >= 2 && /^[A-Z][a-z]/.test(part));
+}
+
+// Advanced sports extraction with context analysis
+function extractSportsAdvanced(
+  text: string,
+): Array<{ sport: string; confidence: number }> {
+  const sports: Array<{ sport: string; confidence: number }> = [];
+
+  const sportPatterns = {
+    WNBA: {
+      patterns: [/\bWNBA\b/gi, /women's\s+basketball/gi],
+      confidence: 0.9,
+    },
+    NBA: { patterns: [/\bNBA\b/gi, /basketball/gi], confidence: 0.8 },
+    MLB: { patterns: [/\bMLB\b/gi, /baseball/gi], confidence: 0.8 },
+    NFL: { patterns: [/\bNFL\b/gi, /football/gi], confidence: 0.8 },
+    NHL: { patterns: [/\bNHL\b/gi, /hockey/gi], confidence: 0.8 },
+    Tennis: { patterns: [/tennis/gi, /atp\b/gi, /wta\b/gi], confidence: 0.8 },
+    Soccer: {
+      patterns: [/soccer/gi, /football\s+club/gi, /mls\b/gi],
+      confidence: 0.8,
+    },
+    MMA: {
+      patterns: [/\bMMA\b/gi, /mixed\s+martial/gi, /ufc\b/gi],
+      confidence: 0.9,
+    },
+    Golf: { patterns: [/\bPGA\b/gi, /golf/gi, /tour/gi], confidence: 0.8 },
+  };
+
+  Object.entries(sportPatterns).forEach(([sport, config]) => {
+    for (const pattern of config.patterns) {
+      if (pattern.test(text)) {
+        sports.push({ sport, confidence: config.confidence });
+        break; // Only add once per sport
+      }
+    }
+  });
+
+  return sports.sort((a, b) => b.confidence - a.confidence);
+}
+
+// Advanced stat type extraction with comprehensive dictionary
+function extractStatTypesAdvanced(
+  text: string,
+): Array<{ statType: string; confidence: number }> {
+  const stats: Array<{ statType: string; confidence: number }> = [];
+
+  const statPatterns = {
+    // Basketball stats
+    Points: { patterns: [/\bpoints?\b/gi, /\bpts?\b/gi], confidence: 0.9 },
+    Rebounds: {
+      patterns: [/\brebound(s)?\b/gi, /\brebs?\b/gi],
+      confidence: 0.9,
+    },
+    Assists: { patterns: [/\bassists?\b/gi, /\basts?\b/gi], confidence: 0.9 },
+    "Fantasy Score": {
+      patterns: [/fantasy\s+score/gi, /fantasy/gi],
+      confidence: 0.8,
+    },
+    "Pts+Rebs+Asts": {
+      patterns: [/pts\+rebs\+asts/gi, /points\+rebounds\+assists/gi],
+      confidence: 0.9,
+    },
+    "3PT Made": {
+      patterns: [/3pt\s+made/gi, /three\s+point/gi],
+      confidence: 0.8,
+    },
+    "FG Attempted": {
+      patterns: [/fg\s+attempted/gi, /field\s+goal/gi],
+      confidence: 0.8,
+    },
+
+    // Baseball stats
+    Hits: { patterns: [/\bhits?\b/gi], confidence: 0.9 },
+    "Home Runs": { patterns: [/home\s+runs?/gi, /\bhr\b/gi], confidence: 0.9 },
+    RBIs: { patterns: [/\brbis?\b/gi, /runs?\s+batted/gi], confidence: 0.9 },
+    "Hitter Fantasy Score": {
+      patterns: [/hitter\s+fantasy/gi],
+      confidence: 0.9,
+    },
+    "Pitcher Strikeouts": {
+      patterns: [/pitcher\s+strikeouts?/gi, /strikeouts?/gi],
+      confidence: 0.8,
+    },
+    "Hits+Runs+RBIs": { patterns: [/hits\+runs\+rbis/gi], confidence: 0.9 },
+
+    // Tennis stats
+    "Total Games": { patterns: [/total\s+games?/gi], confidence: 0.9 },
+    Aces: { patterns: [/\baces?\b/gi], confidence: 0.9 },
+    "Double Faults": { patterns: [/double\s+faults?/gi], confidence: 0.9 },
+
+    // Soccer stats
+    "Passes Attempted": {
+      patterns: [/passes?\s+attempted/gi],
+      confidence: 0.9,
+    },
+    "Shots On Target": {
+      patterns: [/shots?\s+on\s+target/gi],
+      confidence: 0.9,
+    },
+    Goals: { patterns: [/\bgoals?\b/gi], confidence: 0.8 },
+    "Goalie Saves": {
+      patterns: [/goalie\s+saves?/gi, /saves?/gi],
+      confidence: 0.8,
+    },
+
+    // MMA stats
+    "Significant Strikes": {
+      patterns: [/significant\s+strikes?/gi],
+      confidence: 0.9,
+    },
+    "Fight Time": { patterns: [/fight\s+time/gi], confidence: 0.9 },
+    Takedowns: { patterns: [/takedowns?/gi], confidence: 0.8 },
+
+    // Golf stats
+    Strokes: { patterns: [/\bstrokes?\b/gi], confidence: 0.9 },
+    "Birdies Or Better": {
+      patterns: [/birdies?\s+(or\s+)?better/gi],
+      confidence: 0.9,
+    },
+  };
+
+  Object.entries(statPatterns).forEach(([statType, config]) => {
+    for (const pattern of config.patterns) {
+      if (pattern.test(text)) {
+        stats.push({ statType, confidence: config.confidence });
+        break;
+      }
+    }
+  });
+
+  return stats.sort((a, b) => b.confidence - a.confidence);
+}
+
+// Extract betting lines with validation
+function extractBettingLinesAdvanced(
+  text: string,
+): Array<{ line: number; confidence: number }> {
+  const lines: Array<{ line: number; confidence: number }> = [];
+
+  // Pattern for decimal numbers that could be betting lines
+  const linePattern = /\b(\d+(?:\.\d+)?)\b/g;
+  let match;
+
+  while ((match = linePattern.exec(text)) !== null) {
+    const num = parseFloat(match[1]);
+
+    // Validate reasonable betting line ranges by sport context
+    if (num >= 0.5 && num <= 100) {
+      let confidence = 0.5;
+
+      // Higher confidence for common line formats
+      if (num % 0.5 === 0) confidence += 0.2; // 1.5, 2.5, etc.
+      if (num >= 5 && num <= 50) confidence += 0.2; // Common range
+      if (match[1].includes(".")) confidence += 0.1; // Has decimal
+
+      lines.push({ line: num, confidence: Math.min(confidence, 0.9) });
+    }
+  }
+
+  // Remove duplicates and sort by confidence
+  const uniqueLines = lines
+    .filter(
+      (item, index, arr) =>
+        arr.findIndex((x) => Math.abs(x.line - item.line) < 0.01) === index,
+    )
+    .sort((a, b) => b.confidence - a.confidence);
+
+  return uniqueLines;
+}
+
+// Extract over/under directions
+function extractDirectionsAdvanced(
+  text: string,
+): Array<{ direction: "over" | "under"; confidence: number }> {
+  const directions: Array<{ direction: "over" | "under"; confidence: number }> =
+    [];
+
+  // Look for visual indicators and text
+  const overPatterns = [/\bover\b/gi, /↑/g, /⬆/g, /up/gi];
+  const underPatterns = [/\bunder\b/gi, /↓/g, /⬇/g, /down/gi];
+
+  overPatterns.forEach((pattern) => {
+    const matches = text.match(pattern);
+    if (matches) {
+      directions.push({ direction: "over", confidence: 0.8 });
+    }
+  });
+
+  underPatterns.forEach((pattern) => {
+    const matches = text.match(pattern);
+    if (matches) {
+      directions.push({ direction: "under", confidence: 0.8 });
+    }
+  });
+
+  return directions;
+}
+
+// Extract opponent information
+function extractOpponentsAdvanced(
+  text: string,
+): Array<{ opponent: string; confidence: number }> {
+  const opponents: Array<{ opponent: string; confidence: number }> = [];
+
+  // Common team abbreviation patterns
+  const teamPatterns = [
+    /\b([A-Z]{2,4})\s+(\d+)\s+@\s+([A-Z]{2,4})\s+(\d+)\b/g, // "ATL 90 @ GSV 81"
+    /\b([A-Z]{2,4})\s+vs\s+([A-Z]{2,4})\b/g, // "LAL vs GSW"
+    /\b([A-Z]{2,4})\s+@\s+([A-Z]{2,4})\b/g, // "CHI @ MIA"
+    /vs\s+([A-Z][a-z]+\s+[A-Z][a-z]+)/gi, // "vs John Smith"
+    /@\s+([A-Z][a-z]+\s+[A-Z][a-z]+)/gi, // "@ Alex Rodriguez"
+  ];
+
+  teamPatterns.forEach((pattern) => {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const opponent = match[0];
+      if (opponent.length > 3) {
+        opponents.push({ opponent, confidence: 0.7 });
+      }
+    }
+  });
+
+  return opponents;
+}
+
+// Build final player objects from extracted data with intelligent matching
+function buildPlayersFromExtractedData(data: {
+  names: Array<{ name: string; confidence: number }>;
+  sports: Array<{ sport: string; confidence: number }>;
+  statTypes: Array<{ statType: string; confidence: number }>;
+  lines: Array<{ line: number; confidence: number }>;
+  directions: Array<{ direction: "over" | "under"; confidence: number }>;
+  opponents: Array<{ opponent: string; confidence: number }>;
+  playerCount: number;
+}): any[] {
+  const players = [];
+
+  for (let i = 0; i < data.playerCount; i++) {
+    const player = {
+      name: data.names[i]?.name || `Player ${i + 1}`,
+      sport:
+        data.sports[i % Math.max(1, data.sports.length)]?.sport || "Unknown",
+      statType:
+        data.statTypes[i % Math.max(1, data.statTypes.length)]?.statType ||
+        "Points",
+      line: data.lines[i]?.line || 10,
+      direction:
+        data.directions[i % Math.max(1, data.directions.length)]?.direction ||
+        "over",
+      opponent: data.opponents[i]?.opponent || "vs Opponent",
+      matchStatus: "Live",
+    };
+
+    players.push(player);
+  }
+
+  return players;
+}
+
 // Enhanced name extraction using training data
 function extractPlayerNamesWithTraining(text: string): string[] {
   const names: string[] = [];
