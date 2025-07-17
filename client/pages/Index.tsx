@@ -48,36 +48,7 @@ interface Bet {
 }
 
 export default function Index() {
-  const [bets, setBets] = useState<Bet[]>([
-    {
-      id: "1",
-      sport: "NFL",
-      team: "Kansas City Chiefs",
-      odds: "-110",
-      stake: 100,
-      result: "win",
-      payout: 190.91,
-      date: "2024-01-15",
-    },
-    {
-      id: "2",
-      sport: "NBA",
-      team: "Los Angeles Lakers",
-      odds: "+150",
-      stake: 50,
-      result: "loss",
-      date: "2024-01-14",
-    },
-    {
-      id: "3",
-      sport: "NHL",
-      team: "Boston Bruins",
-      odds: "-120",
-      stake: 75,
-      result: "pending",
-      date: "2024-01-16",
-    },
-  ]);
+  const [bets, setBets] = useState<Bet[]>([]);
 
   const [newBet, setNewBet] = useState({
     sport: "",
