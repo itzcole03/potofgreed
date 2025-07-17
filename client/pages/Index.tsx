@@ -99,7 +99,7 @@ export default function Index() {
         ).toFixed(1)
       : 0;
 
-    const addBet = () => {
+  const addBet = () => {
     if (newBet.sport && newBet.team && newBet.odds && newBet.stake) {
       const bet: Bet = {
         id: Date.now().toString(),
@@ -219,7 +219,7 @@ export default function Index() {
           </Card>
         </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Add New Bet */}
           <div className="space-y-6">
             <Card className="border-border bg-card">
@@ -230,88 +230,92 @@ export default function Index() {
                 </CardTitle>
                 <CardDescription>Record your latest sports bet</CardDescription>
               </CardHeader>
-            <CardContent className="space-y-4">
-              <Select
-                value={newBet.sport}
-                onValueChange={(value) =>
-                  setNewBet({ ...newBet, sport: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Sport" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NFL">NFL</SelectItem>
-                  <SelectItem value="NBA">NBA</SelectItem>
-                  <SelectItem value="NHL">NHL</SelectItem>
-                  <SelectItem value="MLB">MLB</SelectItem>
-                  <SelectItem value="Soccer">Soccer</SelectItem>
-                  <SelectItem value="Tennis">Tennis</SelectItem>
-                  <SelectItem value="Boxing">Boxing</SelectItem>
-                </SelectContent>
-              </Select>
+              <CardContent className="space-y-4">
+                <Select
+                  value={newBet.sport}
+                  onValueChange={(value) =>
+                    setNewBet({ ...newBet, sport: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Sport" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NFL">NFL</SelectItem>
+                    <SelectItem value="NBA">NBA</SelectItem>
+                    <SelectItem value="NHL">NHL</SelectItem>
+                    <SelectItem value="MLB">MLB</SelectItem>
+                    <SelectItem value="Soccer">Soccer</SelectItem>
+                    <SelectItem value="Tennis">Tennis</SelectItem>
+                    <SelectItem value="Boxing">Boxing</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Input
-                placeholder="Team/Player"
-                value={newBet.team}
-                onChange={(e) => setNewBet({ ...newBet, team: e.target.value })}
-              />
+                <Input
+                  placeholder="Team/Player"
+                  value={newBet.team}
+                  onChange={(e) =>
+                    setNewBet({ ...newBet, team: e.target.value })
+                  }
+                />
 
-              <Input
-                placeholder="Odds (e.g., -110, +150)"
-                value={newBet.odds}
-                onChange={(e) => setNewBet({ ...newBet, odds: e.target.value })}
-              />
+                <Input
+                  placeholder="Odds (e.g., -110, +150)"
+                  value={newBet.odds}
+                  onChange={(e) =>
+                    setNewBet({ ...newBet, odds: e.target.value })
+                  }
+                />
 
-              <Input
-                type="number"
-                placeholder="Stake Amount ($)"
-                value={newBet.stake}
-                onChange={(e) =>
-                  setNewBet({ ...newBet, stake: e.target.value })
-                }
-              />
+                <Input
+                  type="number"
+                  placeholder="Stake Amount ($)"
+                  value={newBet.stake}
+                  onChange={(e) =>
+                    setNewBet({ ...newBet, stake: e.target.value })
+                  }
+                />
 
-                            <Button onClick={addBet} className="w-full">
-                Add Bet
-              </Button>
-            </CardContent>
-          </Card>
+                <Button onClick={addBet} className="w-full">
+                  Add Bet
+                </Button>
+              </CardContent>
+            </Card>
 
-          {/* PrizePick Import */}
-          <Card className="border-border bg-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-primary" />
-                Import PrizePicks
-              </CardTitle>
-              <CardDescription>
-                Import your PrizePick lineups automatically
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                Import sample PrizePick data to see how it works, or connect
-                your PrizePick account data.
-              </div>
+            {/* PrizePick Import */}
+            <Card className="border-border bg-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-primary" />
+                  Import PrizePicks
+                </CardTitle>
+                <CardDescription>
+                  Import your PrizePick lineups automatically
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-sm text-muted-foreground">
+                  Import sample PrizePick data to see how it works, or connect
+                  your PrizePick account data.
+                </div>
 
-              <Button
-                onClick={importSamplePrizePickData}
-                variant="outline"
-                className="w-full"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Import Sample Data
-              </Button>
+                <Button
+                  onClick={importSamplePrizePickData}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import Sample Data
+                </Button>
 
-              <div className="text-xs text-muted-foreground text-center">
-                This will add 2 sample PrizePick lineups to your tracker
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                <div className="text-xs text-muted-foreground text-center">
+                  This will add 2 sample PrizePick lineups to your tracker
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-                    {/* Bet History */}
+          {/* Bet History */}
           <div className="lg:col-span-2">
             <Card className="border-border bg-card">
               <CardHeader>
@@ -392,9 +396,10 @@ export default function Index() {
                   )}
                 </div>
               </CardContent>
-                        </Card>
+            </Card>
           </div>
-            </div>
+        </div>
+      </div>
     </div>
   );
 }
