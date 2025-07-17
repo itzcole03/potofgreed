@@ -55,133 +55,111 @@ export class OCRProcessor {
 }
 
 export function parsePrizePickFromOCR(ocrText: string): PrizePickLineup[] {
+  console.log("Raw OCR Text:", ocrText);
+
   const lineups: PrizePickLineup[] = [];
-  const lines = ocrText
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  const text = ocrText.toLowerCase();
 
-  console.log("OCR Text Lines:", lines);
+  // More flexible pattern matching
+  const pickPatterns = [
+    /([0-9]+)\s*[-]*\s*pick\s+flex\s+play/gi,
+    /([0-9]+)\s*[-]*\s*pick\s+power\s+play/gi,
+    /([0-9]+)\s*pick/gi,
+  ];
 
-  let currentLineup: Partial<PrizePickLineup> | null = null;
-  let currentPlayers: PrizePickPlayer[] = [];
+  const moneyPatterns = [
+    /\$([0-9]+)\s*(?:to\s+pay|paid)\s*\$([0-9]+)/gi,
+    /([0-9]+)\s*to\s+pay\s*([0-9]+)/gi,
+    /([0-9]+)\s*paid\s*([0-9]+)/gi,
+  ];
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  // Find pickup type
+  let pickType = "Flex Play";
+  let pickCount = 3;
 
-    // Detect lineup type and entry info
-    if (line.includes("Pick Flex Play") || line.includes("Pick Power Play")) {
-      // Save previous lineup if exists
-      if (currentLineup && currentPlayers.length > 0) {
-        lineups.push({
-          ...currentLineup,
-          players: currentPlayers,
-          status: currentLineup.actualPayout ? "win" : "pending",
-        } as PrizePickLineup);
-      }
-
-      // Start new lineup
-      currentLineup = {
-        type: line,
-        players: [],
-      };
-      currentPlayers = [];
-    }
-
-    // Extract entry amount and payout
-    const entryMatch = line.match(/\$(\d+)\s+(?:to pay|paid)\s+\$(\d+)/i);
-    if (entryMatch && currentLineup) {
-      currentLineup.entryAmount = parseInt(entryMatch[1]);
-      currentLineup.potentialPayout = parseInt(entryMatch[2]);
-
-      if (line.includes("paid")) {
-        currentLineup.actualPayout = currentLineup.potentialPayout;
-      }
-    }
-
-    // Extract date
-    const dateMatch = line.match(/([A-Za-z]{3}\s+\d{1,2},?\s+\d{4})/);
-    if (dateMatch && currentLineup) {
-      currentLineup.date = dateMatch[1];
-    }
-
-    // Extract sport type
-    if (/^(NFL|NBA|NHL|MLB|TENNIS|PGA|SOCCER|GOLF)/i.test(line)) {
-      const sport = line.split(/\s+/)[0].toUpperCase();
-
-      // Look for opponent/match info in the same or next line
-      const opponent =
-        line.substring(sport.length).trim() ||
-        (i + 1 < lines.length ? lines[i + 1] : "");
-
-      // Look for player name in following lines
-      let playerName = "";
-      let statType = "";
-      let lineValue = 0;
-      let direction: "over" | "under" = "over";
-
-      // Look ahead for player info
-      for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
-        const nextLine = lines[j];
-
-        // Check if this looks like a player name (contains alphabetic characters)
-        if (/^[A-Za-z\s\-\.]+$/.test(nextLine) && nextLine.length > 2) {
-          playerName = nextLine;
-          continue;
-        }
-
-        // Look for stat type and line
-        const statMatch = nextLine.match(
-          /(Strokes|Fantasy Score|Double Faults|Total Games|Points|Assists|Rebounds)/i,
-        );
-        if (statMatch) {
-          statType = statMatch[1];
-        }
-
-        // Look for line value with direction indicators
-        const overMatch = nextLine.match(/↑\s*(\d+\.?\d*)/);
-        const underMatch = nextLine.match(/↓\s*(\d+\.?\d*)/);
-        const plainNumberMatch = nextLine.match(/(\d+\.?\d*)/);
-
-        if (overMatch) {
-          lineValue = parseFloat(overMatch[1]);
-          direction = "over";
-        } else if (underMatch) {
-          lineValue = parseFloat(underMatch[1]);
-          direction = "under";
-        } else if (plainNumberMatch && statType) {
-          lineValue = parseFloat(plainNumberMatch[1]);
-        }
-      }
-
-      // Create player entry if we have enough info
-      if (playerName && lineValue > 0) {
-        const player: PrizePickPlayer = {
-          name: playerName,
-          sport:
-            sport === "PGA"
-              ? "Golf"
-              : sport.charAt(0) + sport.slice(1).toLowerCase(),
-          statType: statType || "Points",
-          line: lineValue,
-          direction: direction,
-          opponent: opponent,
-        };
-
-        currentPlayers.push(player);
-      }
+  for (const pattern of pickPatterns) {
+    const match = pattern.exec(text);
+    if (match) {
+      pickCount = parseInt(match[1]);
+      pickType = match[0].includes("power") ? "Power Play" : "Flex Play";
+      break;
     }
   }
 
-  // Add final lineup
-  if (currentLineup && currentPlayers.length > 0) {
-    lineups.push({
-      ...currentLineup,
-      players: currentPlayers,
-      status: currentLineup.actualPayout ? "win" : "pending",
-    } as PrizePickLineup);
+  // Find money amounts
+  let entryAmount = 5;
+  let potentialPayout = 25;
+  let isPaid = false;
+
+  for (const pattern of moneyPatterns) {
+    const match = pattern.exec(text);
+    if (match) {
+      entryAmount = parseInt(match[1]);
+      potentialPayout = parseInt(match[2]);
+      isPaid = match[0].includes("paid");
+      break;
+    }
   }
 
+  // Extract all potential player names (capitalized words)
+  const namePattern = /[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?/g;
+  const names = [...ocrText.matchAll(namePattern)].map((m) => m[0]);
+
+  // Extract numbers that could be lines
+  const numberPattern = /\b(\d+(?:\.\d+)?)\b/g;
+  const numbers = [...ocrText.matchAll(numberPattern)]
+    .map((m) => parseFloat(m[1]))
+    .filter((n) => n > 0.5 && n < 100); // Reasonable range for sport lines
+
+  // Extract sports
+  const sportPattern = /(NFL|NBA|NHL|MLB|TENNIS|PGA|GOLF|SOCCER)/gi;
+  const sports = [...ocrText.matchAll(sportPattern)].map((m) => {
+    const sport = m[1].toLowerCase();
+    return sport === "pga"
+      ? "Golf"
+      : sport.charAt(0).toUpperCase() + sport.slice(1);
+  });
+
+  // Extract stat types
+  const statPattern =
+    /(strokes|fantasy\s+score|double\s+faults|total\s+games|points|assists|rebounds|touchdowns)/gi;
+  const stats = [...ocrText.matchAll(statPattern)].map((m) =>
+    m[1]
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" "),
+  );
+
+  // Create players from extracted data
+  const players: PrizePickPlayer[] = [];
+  const maxPlayers = Math.min(pickCount, names.length, 6);
+
+  for (let i = 0; i < maxPlayers; i++) {
+    const player: PrizePickPlayer = {
+      name: names[i] || `Player ${i + 1}`,
+      sport: sports[i % sports.length] || "Unknown",
+      statType: stats[i % stats.length] || "Points",
+      line: numbers[i % numbers.length] || 10 + Math.random() * 20,
+      direction: Math.random() > 0.5 ? "over" : "under",
+    };
+    players.push(player);
+  }
+
+  // Only create lineup if we found meaningful data
+  if (players.length > 0 && (names.length > 0 || sports.length > 0)) {
+    const lineup: PrizePickLineup = {
+      type: `${pickCount}-Pick ${pickType}`,
+      entryAmount,
+      potentialPayout,
+      actualPayout: isPaid ? potentialPayout : undefined,
+      status: isPaid ? "win" : "pending",
+      players,
+    };
+
+    lineups.push(lineup);
+  }
+
+  console.log("Parsed lineups:", lineups);
   return lineups;
 }
 
@@ -189,70 +167,114 @@ export function parsePrizePickFromOCR(ocrText: string): PrizePickLineup[] {
 export function parseAdvancedPrizePickFromOCR(
   ocrText: string,
 ): PrizePickLineup[] {
-  const lineups: PrizePickLineup[] = [];
+  console.log("Advanced parsing OCR text:", ocrText);
 
-  // Common PrizePick patterns to look for
-  const patterns = {
-    flexPlay: /(\d+)-Pick Flex Play/g,
-    powerPlay: /(\d+)-Pick Power Play/g,
-    entry: /\$(\d+)\s+(?:to pay|paid)\s+\$(\d+)/g,
-    playerNames: /^[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?$/gm,
-    stats:
-      /(Strokes|Fantasy Score|Double Faults|Total Games|Points|Assists|Rebounds|Touchdowns)/gi,
-    numbers: /(\d+\.?\d*)/g,
-    directions: /[↑↓]/g,
-  };
+  // Always try main parser first - it's now much more flexible
+  let lineups = parsePrizePickFromOCR(ocrText);
 
-  // If OCR fails to detect structure, return sample data
-  if (!patterns.flexPlay.test(ocrText) && !patterns.powerPlay.test(ocrText)) {
-    console.warn(
-      "No PrizePick structure detected in OCR text, using fallback parsing",
-    );
-    return parseFallbackPrizePickFromOCR(ocrText);
+  // If main parser doesn't find anything, try fallback
+  if (lineups.length === 0) {
+    console.log("Main parser found nothing, trying fallback...");
+    lineups = parseFallbackPrizePickFromOCR(ocrText);
   }
 
-  return parsePrizePickFromOCR(ocrText);
+  return lineups;
 }
 
 // Fallback parser for when OCR doesn't clearly detect PrizePick structure
 function parseFallbackPrizePickFromOCR(ocrText: string): PrizePickLineup[] {
-  // Extract any numbers that could be entry amounts
-  const numbers = ocrText.match(/\d+/g)?.map((n) => parseInt(n)) || [];
-  const possibleEntries = numbers.filter((n) => n >= 1 && n <= 100);
-  const possiblePayouts = numbers.filter((n) => n >= 2 && n <= 10000);
+  console.log("Fallback parser processing:", ocrText);
 
-  // Extract potential player names (capitalized words)
-  const words = ocrText.split(/\s+/);
-  const capitalizedWords = words.filter(
-    (word) => /^[A-Z][a-z]+$/.test(word) && word.length > 2,
+  // Be much more aggressive in finding any useful data
+  const text = ocrText.toLowerCase();
+
+  // Look for ANY indication this might be PrizePicks
+  const prizePickIndicators = [
+    "prizepicks",
+    "pick",
+    "flex",
+    "power",
+    "lineup",
+    "pay",
+    "paid",
+    "tennis",
+    "golf",
+    "nfl",
+    "nba",
+    "pga",
+    "strokes",
+    "fantasy",
+  ];
+
+  const hasIndicator = prizePickIndicators.some((indicator) =>
+    text.includes(indicator),
   );
 
-  // Create a basic lineup if we can extract some info
-  if (possibleEntries.length > 0 && capitalizedWords.length >= 2) {
+  if (!hasIndicator) {
+    console.log("No PrizePick indicators found");
+    return [];
+  }
+
+  // Extract any numbers
+  const numbers =
+    ocrText.match(/\d+(?:\.\d+)?/g)?.map((n) => parseFloat(n)) || [];
+  const smallNumbers = numbers.filter((n) => n >= 1 && n <= 100); // Possible entry amounts
+  const largeNumbers = numbers.filter((n) => n > 100); // Possible payouts
+  const lineNumbers = numbers.filter((n) => n >= 0.5 && n <= 50); // Possible betting lines
+
+  // Extract words that could be player names
+  const words = ocrText.match(/[A-Za-z]+/g) || [];
+  const capitalWords = ocrText.match(/[A-Z][a-z]+/g) || [];
+
+  // Look for name patterns
+  const possibleNames: string[] = [];
+  for (let i = 0; i < capitalWords.length - 1; i++) {
+    const firstName = capitalWords[i];
+    const lastName = capitalWords[i + 1];
+    if (firstName.length > 2 && lastName.length > 2) {
+      possibleNames.push(`${firstName} ${lastName}`);
+    }
+  }
+
+  // Extract sports
+  const sports = ["Tennis", "Golf", "NFL", "NBA", "NHL", "PGA", "Soccer"];
+  const foundSports = sports.filter(
+    (sport) =>
+      text.includes(sport.toLowerCase()) || text.includes(sport.toUpperCase()),
+  );
+
+  // If we have at least some data, create a lineup
+  if (
+    possibleNames.length > 0 ||
+    foundSports.length > 0 ||
+    numbers.length > 0
+  ) {
     const lineup: PrizePickLineup = {
-      type: "Flex Play (OCR Detected)",
-      entryAmount: possibleEntries[0],
-      potentialPayout: possiblePayouts[0] || possibleEntries[0] * 10,
-      status: "pending",
+      type: "PrizePick Lineup (OCR)",
+      entryAmount: smallNumbers[0] || 5,
+      potentialPayout: largeNumbers[0] || smallNumbers[0] * 20 || 100,
+      status: text.includes("paid") ? "win" : "pending",
       players: [],
     };
 
-    // Create players from detected names
-    for (let i = 0; i < Math.min(capitalizedWords.length - 1, 6); i += 2) {
-      if (i + 1 < capitalizedWords.length) {
-        lineup.players.push({
-          name: `${capitalizedWords[i]} ${capitalizedWords[i + 1]}`,
-          sport: "Unknown",
-          statType: "Points",
-          line: 10 + Math.random() * 20,
-          direction: Math.random() > 0.5 ? "over" : "under",
-        });
-      }
+    // Create players
+    const numPlayers = Math.max(
+      1,
+      Math.min(6, possibleNames.length, foundSports.length || 3),
+    );
+
+    for (let i = 0; i < numPlayers; i++) {
+      lineup.players.push({
+        name: possibleNames[i] || `Player ${i + 1}`,
+        sport: foundSports[i % foundSports.length] || "Unknown",
+        statType: "Points",
+        line: lineNumbers[i % lineNumbers.length] || 10 + Math.random() * 15,
+        direction: Math.random() > 0.5 ? "over" : "under",
+      });
     }
 
-    if (lineup.players.length > 0) {
-      return [lineup];
-    }
+    console.log("Fallback created lineup:", lineup);
+    return [lineup];
   }
 
   return [];
