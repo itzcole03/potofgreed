@@ -22,7 +22,15 @@ import {
   Target,
   Plus,
   Trash2,
+  Upload,
+  Zap,
 } from "lucide-react";
+import {
+  samplePrizePickData,
+  parsePrizePickLineupsToBets,
+  validatePrizePickData,
+  type PrizePickData,
+} from "@/lib/prizepick-parser";
 
 interface Bet {
   id: string;
@@ -91,7 +99,7 @@ export default function Index() {
         ).toFixed(1)
       : 0;
 
-  const addBet = () => {
+    const addBet = () => {
     if (newBet.sport && newBet.team && newBet.odds && newBet.stake) {
       const bet: Bet = {
         id: Date.now().toString(),
@@ -105,6 +113,17 @@ export default function Index() {
       setBets([...bets, bet]);
       setNewBet({ sport: "", team: "", odds: "", stake: "" });
     }
+  };
+
+  const importPrizePickData = (data: PrizePickData) => {
+    if (validatePrizePickData(data)) {
+      const newBets = parsePrizePickLineupsToBets(data);
+      setBets([...bets, ...newBets]);
+    }
+  };
+
+  const importSamplePrizePickData = () => {
+    importPrizePickData(samplePrizePickData);
   };
 
   const updateBetResult = (
@@ -200,16 +219,17 @@ export default function Index() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Add New Bet */}
-          <Card className="border-border bg-card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="h-5 w-5" />
-                Add New Bet
-              </CardTitle>
-              <CardDescription>Record your latest sports bet</CardDescription>
-            </CardHeader>
+          <div className="space-y-6">
+            <Card className="border-border bg-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-5 w-5" />
+                  Add New Bet
+                </CardTitle>
+                <CardDescription>Record your latest sports bet</CardDescription>
+              </CardHeader>
             <CardContent className="space-y-4">
               <Select
                 value={newBet.sport}
@@ -252,13 +272,46 @@ export default function Index() {
                 }
               />
 
-              <Button onClick={addBet} className="w-full">
+                            <Button onClick={addBet} className="w-full">
                 Add Bet
               </Button>
             </CardContent>
           </Card>
 
-          {/* Bet History */}
+          {/* PrizePick Import */}
+          <Card className="border-border bg-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-primary" />
+                Import PrizePicks
+              </CardTitle>
+              <CardDescription>
+                Import your PrizePick lineups automatically
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                Import sample PrizePick data to see how it works, or connect
+                your PrizePick account data.
+              </div>
+
+              <Button
+                onClick={importSamplePrizePickData}
+                variant="outline"
+                className="w-full"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import Sample Data
+              </Button>
+
+              <div className="text-xs text-muted-foreground text-center">
+                This will add 2 sample PrizePick lineups to your tracker
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+                    {/* Bet History */}
           <div className="lg:col-span-2">
             <Card className="border-border bg-card">
               <CardHeader>
@@ -339,10 +392,9 @@ export default function Index() {
                   )}
                 </div>
               </CardContent>
-            </Card>
+                        </Card>
           </div>
-        </div>
-      </div>
+            </div>
     </div>
   );
 }
