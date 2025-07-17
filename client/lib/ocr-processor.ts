@@ -414,15 +414,24 @@ function tryDirectPatternMatching(ocrText: string): PrizePickLineup | null {
 
   console.log(`Detected ${detectedLineup.type} format`);
 
-  // Enhanced money pattern detection
-  const moneyRegex = /\$(\d+(?:\.\d+)?)/g;
+  // Enhanced money pattern detection with OCR error correction
+  const moneyRegex = /\$?(\d+(?:\.\d+)?)/g;
   const allDollarAmounts = [];
   let match;
   while ((match = moneyRegex.exec(ocrText)) !== null) {
-    allDollarAmounts.push(parseFloat(match[1]));
+    let amount = parseFloat(match[1]);
+
+    // Fix common OCR decimal errors
+    // If amount is 750, it's likely $7.50 (missing decimal)
+    // If amount is 250, it's likely $2.50 (missing decimal)
+    if (amount >= 100 && amount <= 999 && amount % 10 === 0) {
+      amount = amount / 100; // Convert 750 -> 7.50, 250 -> 2.50
+    }
+
+    allDollarAmounts.push(amount);
   }
 
-  console.log("Found dollar amounts:", allDollarAmounts);
+  console.log("Found and corrected dollar amounts:", allDollarAmounts);
 
   let entryAmount = 2.5; // default
   let potentialPayout = 7.5; // default
