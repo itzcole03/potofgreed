@@ -8,7 +8,7 @@ export interface StoredBet {
   team: string;
   odds: string;
   stake: number;
-  result: "win" | "loss" | "pending";
+  result: "win" | "loss" | "pending" | "refund" | "push" | "cancelled" | "void";
   payout?: number;
   date: string;
   createdAt: string;
@@ -184,6 +184,14 @@ export class BetStorage {
       .reduce((sum, bet) => sum + (bet.payout || 0), 0);
     const totalLost = bets
       .filter((bet) => bet.result === "loss")
+      .reduce((sum, bet) => sum + bet.stake, 0);
+    const totalRefunded = bets
+      .filter(
+        (bet) =>
+          bet.result === "refund" ||
+          bet.result === "push" ||
+          bet.result === "void",
+      )
       .reduce((sum, bet) => sum + bet.stake, 0);
 
     // Calculate storage size
