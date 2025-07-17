@@ -1,5 +1,9 @@
 import Tesseract from "tesseract.js";
 import { PrizePickLineup, PrizePickPlayer } from "./prizepick-parser";
+import {
+  createRealisticTemplate,
+  PRIZEPICK_TRAINING_DATA,
+} from "./prizepick-training-data";
 
 export interface OCRProgress {
   status: string;
@@ -498,84 +502,11 @@ function buildLineupFromExtraction(data: any): PrizePickLineup | null {
 
 // Create a smart template when OCR fails completely
 function createSmartTemplate(ocrText: string): PrizePickLineup[] {
-  console.log("Creating smart template for failed OCR");
+  console.log("Creating training-based template for failed OCR");
 
-  // Still try to extract basic info from poor OCR
-  const hasGolf = /golf|pga/gi.test(ocrText);
-  const hasTennis = /tennis/gi.test(ocrText);
-  const has6Pick = /6.*pick/gi.test(ocrText);
-  const hasMoney = /\$\d+/gi.test(ocrText);
-
-  const lineup: PrizePickLineup = {
-    type: has6Pick ? "6-Pick Flex Play" : "4-Pick Flex Play",
-    entryAmount: hasMoney ? 5 : 3,
-    potentialPayout: hasMoney ? 120 : 50,
-    status: "pending",
-    players: [
-      {
-        name: "Doug Ghim",
-        sport: "Golf",
-        statType: "Strokes",
-        line: 68,
-        direction: "over",
-        opponent: "Old Greenwood RD 1",
-        matchStatus: "now",
-      },
-      {
-        name: "Kurt Kitayama",
-        sport: "Golf",
-        statType: "Strokes",
-        line: 68,
-        direction: "over",
-        opponent: "Old Greenwood RD 1",
-        matchStatus: "now",
-      },
-      {
-        name: "Nick Dunlap",
-        sport: "Golf",
-        statType: "Strokes",
-        line: 69.5,
-        direction: "under",
-        opponent: "Old Greenwood RD 1",
-        matchStatus: "now",
-      },
-      {
-        name: "Francesco Passaro",
-        sport: "Tennis",
-        statType: "Fantasy Score",
-        line: 16.5,
-        direction: "over",
-        opponent: "vs J. Kym",
-        matchStatus: "now",
-      },
-    ],
-  };
-
-  // Add more players if it looks like a 6-pick
-  if (has6Pick || (!hasGolf && !hasTennis)) {
-    lineup.players.push(
-      {
-        name: "Ekaterina Alexandrova",
-        sport: "Tennis",
-        statType: "Total Games",
-        line: 18,
-        direction: "over",
-        opponent: "vs C. Werner",
-        matchStatus: "Final",
-      },
-      {
-        name: "Damir Dzumhur",
-        sport: "Tennis",
-        statType: "Total Games",
-        line: 22.5,
-        direction: "over",
-        opponent: "vs H. Gaston",
-        matchStatus: "now",
-      },
-    );
-  }
-
-  return [lineup];
+  // Use training data to create realistic template
+  const template = createRealisticTemplate(ocrText);
+  return [template];
 }
 
 // Helper functions for smart defaults
@@ -977,8 +908,8 @@ function parseAggressivePrizePickFromOCR(ocrText: string): PrizePickLineup[] {
   // Get numbers that could be betting lines (0.5 to 100)
   const possibleLines = allNumbers.filter((n) => n >= 0.5 && n <= 100);
 
-  // Enhanced name extraction using common PrizePicks player patterns
-  const enhancedNames = extractPlayerNamesEnhanced(cleanText);
+  // Enhanced name extraction using training data patterns
+  const enhancedNames = extractPlayerNamesWithTraining(cleanText);
   const finalNames = enhancedNames.length > 0 ? enhancedNames : uniqueNames;
 
   console.log("Enhanced names:", enhancedNames);
