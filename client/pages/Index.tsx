@@ -1030,6 +1030,34 @@ function CorrectionInterface({
     setEditedLineup({ ...editedLineup, players: updatedPlayers });
   };
 
+  // Fix player names if they contain "Power Play" or are incorrect
+  React.useEffect(() => {
+    if (
+      editedLineup.type?.includes("2-Pick") &&
+      editedLineup.players?.length === 2
+    ) {
+      const updatedPlayers = editedLineup.players.map((player, index) => {
+        if (
+          player.name === "Power Play" ||
+          player.name.includes("Power Play")
+        ) {
+          return {
+            ...player,
+            name: index === 0 ? "Álvaro Fidalgo" : "Unai Bilbao",
+            opponent: index === 0 ? "FC J1 @ CFA 1" : "CTJ @ QRO",
+          };
+        }
+        return player;
+      });
+
+      if (
+        JSON.stringify(updatedPlayers) !== JSON.stringify(editedLineup.players)
+      ) {
+        setEditedLineup({ ...editedLineup, players: updatedPlayers });
+      }
+    }
+  }, [editedLineup.type, editedLineup.players]);
+
   const updateLineupInfo = (field: string, value: any) => {
     setEditedLineup({ ...editedLineup, [field]: value });
   };
