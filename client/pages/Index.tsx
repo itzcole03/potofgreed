@@ -576,6 +576,32 @@ export default function Index() {
     setBets(updatedBets);
   };
 
+  const updatePick = (
+    betId: string,
+    pickIndex: number,
+    isWin: boolean | undefined,
+  ) => {
+    const bet = bets.find((b) => b.id === betId);
+    if (!bet?.prizePickDetails) return;
+
+    const updatedLineup = {
+      ...bet.prizePickDetails,
+      players: bet.prizePickDetails.players.map((p, i) =>
+        i === pickIndex
+          ? {
+              ...p,
+              isWin,
+              actualValue: isWin === undefined ? undefined : p.actualValue,
+            }
+          : p,
+      ),
+    };
+
+    const updates = { prizePickDetails: updatedLineup };
+    const updatedBets = betStorage.updateBet(betId, updates);
+    setBets(updatedBets);
+  };
+
   const calculatePayout = (odds: string, stake: number) => {
     const oddsNum = parseFloat(odds);
     if (oddsNum > 0) {
@@ -798,6 +824,7 @@ export default function Index() {
                       onUpdateResult={updateBetResult}
                       onDelete={deleteBet}
                       calculatePayout={calculatePayout}
+                      onUpdatePick={updatePick}
                     />
                   ))}
 
