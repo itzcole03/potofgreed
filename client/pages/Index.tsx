@@ -883,6 +883,231 @@ export default function Index() {
           </div>
         </div>
       </div>
+
+      {/* Correction Modal */}
+      <Dialog open={showCorrectionModal} onOpenChange={setShowCorrectionModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              Review Detected PrizePick Data
+            </DialogTitle>
+          </DialogHeader>
+
+          {pendingLineup && (
+            <CorrectionInterface
+              lineup={pendingLineup}
+              onConfirm={confirmCorrectedLineup}
+              onCancel={cancelCorrection}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Correction Interface Component
+interface CorrectionInterfaceProps {
+  lineup: any;
+  onConfirm: (correctedLineup: any) => void;
+  onCancel: () => void;
+}
+
+function CorrectionInterface({
+  lineup,
+  onConfirm,
+  onCancel,
+}: CorrectionInterfaceProps) {
+  const [editedLineup, setEditedLineup] = useState(lineup);
+
+  const updatePlayer = (index: number, field: string, value: any) => {
+    const updatedPlayers = [...editedLineup.players];
+    updatedPlayers[index] = { ...updatedPlayers[index], [field]: value };
+    setEditedLineup({ ...editedLineup, players: updatedPlayers });
+  };
+
+  const updateLineupInfo = (field: string, value: any) => {
+    setEditedLineup({ ...editedLineup, [field]: value });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Lineup Header Info */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/20 rounded-lg">
+        <div>
+          <label className="text-sm font-medium text-muted-foreground">
+            Lineup Type
+          </label>
+          <Input
+            value={editedLineup.type}
+            onChange={(e) => updateLineupInfo("type", e.target.value)}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-muted-foreground">
+            Entry Amount ($)
+          </label>
+          <Input
+            type="number"
+            value={editedLineup.entryAmount}
+            onChange={(e) =>
+              updateLineupInfo("entryAmount", parseFloat(e.target.value))
+            }
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-muted-foreground">
+            Potential Payout ($)
+          </label>
+          <Input
+            type="number"
+            value={editedLineup.potentialPayout}
+            onChange={(e) =>
+              updateLineupInfo("potentialPayout", parseFloat(e.target.value))
+            }
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      {/* Players */}
+      <div className="space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Trophy className="h-4 w-4" />
+          Players ({editedLineup.players.length})
+        </h3>
+
+        {editedLineup.players.map((player: any, index: number) => (
+          <div
+            key={index}
+            className="grid grid-cols-1 lg:grid-cols-6 gap-3 p-4 border border-border rounded-lg"
+          >
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                Player Name
+              </label>
+              <Input
+                value={player.name}
+                onChange={(e) => updatePlayer(index, "name", e.target.value)}
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                Sport
+              </label>
+              <Select
+                value={player.sport}
+                onValueChange={(value) => updatePlayer(index, "sport", value)}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Golf">Golf</SelectItem>
+                  <SelectItem value="Tennis">Tennis</SelectItem>
+                  <SelectItem value="NBA">NBA</SelectItem>
+                  <SelectItem value="NFL">NFL</SelectItem>
+                  <SelectItem value="NHL">NHL</SelectItem>
+                  <SelectItem value="MLB">MLB</SelectItem>
+                  <SelectItem value="Soccer">Soccer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                Stat Type
+              </label>
+              <Select
+                value={player.statType}
+                onValueChange={(value) =>
+                  updatePlayer(index, "statType", value)
+                }
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Strokes">Strokes</SelectItem>
+                  <SelectItem value="Fantasy Score">Fantasy Score</SelectItem>
+                  <SelectItem value="Total Games">Total Games</SelectItem>
+                  <SelectItem value="Points">Points</SelectItem>
+                  <SelectItem value="Double Faults">Double Faults</SelectItem>
+                  <SelectItem value="Assists">Assists</SelectItem>
+                  <SelectItem value="Rebounds">Rebounds</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                Line
+              </label>
+              <Input
+                type="number"
+                step="0.5"
+                value={player.line}
+                onChange={(e) =>
+                  updatePlayer(index, "line", parseFloat(e.target.value))
+                }
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                Direction
+              </label>
+              <Select
+                value={player.direction}
+                onValueChange={(value) =>
+                  updatePlayer(index, "direction", value)
+                }
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="over">Over</SelectItem>
+                  <SelectItem value="under">Under</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                Opponent
+              </label>
+              <Input
+                value={player.opponent || ""}
+                onChange={(e) =>
+                  updatePlayer(index, "opponent", e.target.value)
+                }
+                className="mt-1"
+                placeholder="vs Opponent"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <DialogFooter className="gap-2">
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          onClick={() => onConfirm(editedLineup)}
+          className="bg-primary hover:bg-primary/90"
+        >
+          <Check className="h-4 w-4 mr-2" />
+          Import Lineup
+        </Button>
+      </DialogFooter>
     </div>
   );
 }
